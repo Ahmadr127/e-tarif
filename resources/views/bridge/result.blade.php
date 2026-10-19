@@ -1,0 +1,40 @@
+@extends('layouts.app')
+
+@section('title', 'Hasil Mapping Tarif')
+
+@section('content')
+<div class="w-full mx-auto flex flex-col gap-4">
+    <x-card padding="false">
+        <x-slot name="title">Hasil Mapping</x-slot>
+        <x-slot name="subtitle">{{ $result['filename'] ?? '' }}</x-slot>
+        <x-slot name="actions">
+            <a href="{{ route('bridge.index') }}" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-sp-primary hover:text-sp-primary-dark transition-colors">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+            @if(!empty($result['groups']))
+                <button type="button" data-rm-open
+                    class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-white rounded-md bg-blue-600 hover:bg-blue-700 transition-colors">
+                    <i class="bi bi-pencil-square"></i> Petakan Manual
+                </button>
+            @endif
+            @if(($result['summary']['matched'] ?? 0) > 0 || ($result['summary']['suggested'] ?? 0) > 0)
+                <form action="{{ route('bridge.generate') }}" method="POST" onsubmit="return confirm('Generate Excel baru? SERVICECODE + DESCRIPTION berubah untuk row MATCHED + row AMBIGUOUS/NOT_FOUND yang ada sarannya; SERVICECODE KELAS mengikuti master bila ditemukan; kolom RUANG BEDAH diisi OK/NON OK; kolom LoS dipertahankan (teks days dibersihkan).');">
+                    @csrf
+                    <input type="hidden" name="token" value="{{ $result['token'] }}">
+                    <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-white rounded-md bg-green-600 hover:bg-green-700 transition-colors">
+                        <i class="bi bi-file-earmark-arrow-down"></i> Generate Excel
+                    </button>
+                </form>
+            @endif
+        </x-slot>
+
+        <x-bridge.summary-stats :summary="$result['summary']" />
+
+        @if(!empty($result['groups']))
+            <x-bridge.resolve-modal :token="$result['token']" :groups="$result['groups']" />
+        @endif
+
+        <x-bridge.preview-table :rows="$result['preview']" />
+    </x-card>
+</div>
+@endsection

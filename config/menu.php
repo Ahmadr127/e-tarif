@@ -1,0 +1,171 @@
+<?php
+
+/*
+|--------------------------------------------------------------------------
+| Menu Sidebar
+|--------------------------------------------------------------------------
+|
+| Struktur menu sidebar berbasis konfigurasi.
+| Setiap grup punya 'title' + 'menus'.
+| Item menu bisa berupa:
+|   - Link tunggal  : 'permission' (string) + 'route' + 'route_pattern' + 'icon'
+|   - Dropdown      : 'permissions' (array) + 'children' (array link tunggal)
+|
+| 'route_pattern' dipakai untuk menentukan status aktif (request()->routeIs).
+| Ikon memakai Font Awesome tanpa prefix, contoh: 'fa-tachometer-alt'.
+|
+*/
+
+return [
+    [
+        // 'title' => 'Menu Utama',
+        'menus' => [
+            [
+                'label' => 'Dashboard',
+                'icon' => 'bi-grid-fill',
+                'route' => 'dashboard',
+                'route_pattern' => 'dashboard',
+                'permission' => 'view_dashboard',
+            ],
+        ],
+    ],
+    [
+        // 'title' => 'Pengaturan',
+        'menus' => [
+            [
+                'label' => 'Pengguna & Akses',
+                'icon' => 'bi-person-fill-gear',
+                'permissions' => ['manage_users', 'manage_roles', 'manage_permissions'],
+                'children' => [
+                    [
+                        'label' => 'Users',
+                        'icon' => 'bi-person-fill-gear',
+                        'route' => 'users.index',
+                        'route_pattern' => 'users.*',
+                        'permission' => 'manage_users',
+                    ],
+                    [
+                        'label' => 'Roles',
+                        'icon' => 'bi-person-fill-check',
+                        'route' => 'roles.index',
+                        'route_pattern' => 'roles.*',
+                        'permission' => 'manage_roles',
+                    ],
+                    [
+                        'label' => 'Permissions',
+                        'icon' => 'bi-key-fill',
+                        'route' => 'permissions.index',
+                        'route_pattern' => 'permissions.*',
+                        'permission' => 'manage_permissions',
+                    ],
+                ],
+            ],
+        ],
+    ],
+    [
+        // 'title' => 'Organisasi',
+        'menus' => [
+            [
+                'label' => 'Organisasi',
+                'icon' => 'bi-buildings-fill',
+                'permissions' => ['manage_organization_types', 'manage_organization_units'],
+                'children' => [
+                    [
+                        'label' => 'Tipe Organisasi',
+                        'icon' => 'bi-diagram-3-fill',
+                        'route' => 'organization-types.index',
+                        'route_pattern' => 'organization-types.*',
+                        'permission' => 'manage_organization_types',
+                    ],
+                    [
+                        'label' => 'Unit Organisasi',
+                        'icon' => 'bi-buildings-fill',
+                        'route' => 'organization-units.index',
+                        'route_pattern' => 'organization-units.*',
+                        'permission' => 'manage_organization_units',
+                    ],
+                ],
+            ],
+        ],
+    ],
+    [
+        // 'title' => 'Management Tarif',
+        'menus' => [
+            [
+                'label' => 'Buku Tarif',
+                'icon' => 'bi-cash-coin',
+                'route' => 'tarifs.index',
+                'route_pattern' => 'tarifs.*',
+                'permission' => 'manage_tarifs',
+            ],
+            [
+                'label' => 'Mapping Tarif',
+                'icon' => 'bi-arrow-left-right',
+                'route' => 'bridge.index',
+                'route_pattern' => 'bridge.*',
+                'permission' => 'manage_tarifs',
+            ],
+            [
+                'label' => 'Master & Tarif',
+                'icon' => 'bi-cash-coin',
+                'permissions' => ['manage_tarif_masters', 'manage_tarifs', 'manage_helpers'],
+                'children' => [
+                    [
+                        'label' => 'Jenis Tarif',
+                        'icon' => 'bi-tags-fill',
+                        'route' => 'jenis-tarifs.index',
+                        'route_pattern' => 'jenis-tarifs.*',
+                        'permission' => 'manage_tarif_masters',
+                    ],
+                    [
+                        'label' => 'Provider',
+                        'icon' => 'bi-building-fill',
+                        'route' => 'providers.index',
+                        'route_pattern' => 'providers.*',
+                        'permission' => 'manage_tarif_masters',
+                    ],
+                    [
+                        'label' => 'Service',
+                        'icon' => 'bi-gear-fill',
+                        'route' => 'services.index',
+                        'route_pattern' => 'services.*',
+                        'permission' => 'manage_tarif_masters',
+                    ],
+                    [
+                        'label' => 'Kelas',
+                        'icon' => 'bi-layers-fill',
+                        'route' => 'classes.index',
+                        'route_pattern' => 'classes.*',
+                        'permission' => 'manage_tarif_masters',
+                    ],
+                    [
+                        'label' => 'Helper',
+                        'icon' => 'bi-percent',
+                        'route' => 'helpers.index',
+                        'route_pattern' => 'helpers.*',
+                        'permission' => 'manage_helpers',
+                    ],
+                    [
+                        'label' => 'Import Excel',
+                        'icon' => 'bi-file-earmark-spreadsheet',
+                        'route' => 'tarif-import.index',
+                        'route_pattern' => 'tarif-import.*',
+                        'permission' => 'manage_tarifs',
+                    ],
+                ],
+            ],
+        ],
+    ],
+    [
+        // 'title' => 'Laporan',
+        'menus' => [
+            [
+                'label' => 'Audit Log',
+                'icon' => 'bi-clock-history',
+                'route' => 'activity-logs.index',
+                'route_pattern' => 'activity-logs.*',
+                'permission' => 'view_activity_logs',
+            ],
+        ],
+    ],
+];

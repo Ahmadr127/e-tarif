@@ -1,0 +1,376 @@
+@props(['rows' => []])
+
+@php
+    // Store JSON untuk modal analisa per baris: hanya row AMBIGUOUS /
+    // NOT_FOUND agar ukuran HTML tetap kecil. Kandidat dipangkas ke
+    // field yang dipakai modal (termasuk metadata skor _*).
+    $analysisStore = [];
+    foreach ($rows as $row) {
+        // Termasuk MATCHED-via-konsensus (status valid tetapi saran +
+        // modal analisa tetap dipertahankan).
+        if (! in_array($row['status'] ?? '', ['AMBIGUOUS', 'NOT_FOUND'], true) && empty($row['suggestions'])) {
+            continue;
+        }
+        $candidates = [];
+        foreach (array_slice($row['candidates'] ?? [], 0, 20) as $c) {
+            $candidates[] = [
+                'service_code' => $c['service_code'] ?? '-',
+                'service_name' => $c['service_name'] ?? null,
+                'class_code' => $c['class_code'] ?? '-',
+                'class_name' => $c['class_name'] ?? null,
+                'tariff' => isset($c['tariff']) && is_numeric($c['tariff']) ? (float) $c['tariff'] : null,
+                'score' => isset($c['_score']) ? round((float) $c['_score'], 3) : null,
+                'class_match' => (int) ($c['_class_match'] ?? 0),
+                'tariff_diff' => isset($c['_tariff_diff']) && is_numeric($c['_tariff_diff']) ? (float) $c['_tariff_diff'] : null,
+            ];
+        }
+        $suggested = $row['suggested'] ?? null;
+        $effSource = $row['tariff_source'] ?? null;
+        $analysisStore[$row['excel_row']] = [
+            'excel_row' => $row['excel_row'],
+            'status' => $row['status'],
+            'service_code' => $row['service_code'] ?? '',
+            'service_description' => $row['service_description'] ?? '',
+            'service_class_code' => $row['service_class_code'] ?? '',
+            'class_name' => $row['class_name'] ?? '',
+            'tariff' => isset($row['tariff']) && is_numeric($row['tariff']) ? (float) $row['tariff'] : null,
+            'tariff_raw' => trim((string) ($row['tariff_raw'] ?? '')),
+            'effective_tariff' => isset($row['effective_tariff']) && is_numeric($row['effective_tariff']) ? (float) $row['effective_tariff'] : null,
+            'tariff_source' => $effSource,
+            'tariff_source_label' => \App\Services\Bridge\BridgeTarifEffectiveTariff::sourceLabel($effSource),
+            'total_billed' => isset($row['total_billed']) && is_numeric($row['total_billed']) ? (float) $row['total_billed'] : null,
+            'quantity' => isset($row['quantity']) && is_numeric($row['quantity']) ? (float) $row['quantity'] : null,
+            'suggestions' => array_map(fn ($s) => [
+                'service_code' => $s['service_code'] ?? '-',
+                'service_description' => $s['service_description'] ?? $s['service_name'] ?? null,
+                'class_code' => $s['class_code'] ?? null,
+                'class_name' => $s['class_name'] ?? null,
+                'tariff' => isset($s['tariff']) && is_numeric($s['tariff']) ? (float) $s['tariff'] : null,
+                'tariff_diff' => isset($s['_tariff_diff']) && is_numeric($s['_tariff_diff']) ? (float) $s['_tariff_diff'] : null,
+                'class_match' => (int) ($s['_class_match'] ?? 0),
+                // Sinyal teks (P2): agar % tidak disangka kemiripan nama
+                // tindakan — % murni rata-rata kecocokan kelas + tarif.
+                'text_tier' => isset($s['desc_tier']) ? (int) $s['desc_tier'] : null,
+                'text_matched' => isset($s['desc_matched']) ? (int) $s['desc_matched'] : null,
+                'text_total' => isset($s['desc_total']) ? (int) $s['desc_total'] : null,
+                'text_idf' => isset($s['text_idf']) && is_numeric($s['text_idf']) ? round((float) $s['text_idf'], 3) : null,
+            ], array_slice($row['suggestions'] ?? [], 0, 10)),
+            'mapping_key' => $row['mapping_key'] ?? '',
+            'new_service_code' => $row['new_service_code'] ?? null,
+            'new_service_description' => $row['new_service_description'] ?? null,
+            'new_class_code' => $row['new_class_code'] ?? null,
+            'analysis' => $row['analysis'] ?? null,
+            // Keyword pencarian efektif untuk saran master (NOT_FOUND).
+            'search_query' => $row['search_query'] ?? null,
+            'search_rule' => $row['search_rule'] ?? null,
+            'suggested' => $suggested ? [
+                'service_code' => $suggested['service_code'] ?? '-',
+                'service_description' => $suggested['service_description'] ?? $suggested['service_name'] ?? null,
+                'class_code' => $suggested['class_code'] ?? '-',
+            ] : null,
+            'candidates' => $candidates,
+        ];
+    }
+@endphp
+
+<div data-pv-wrap>
+<div class="px-4 pt-3 pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <p class="text-xs text-gray-500"><i class="bi bi-cursor-click"></i> Klik baris berstatus <span class="font-semibold text-yellow-700">AMBIGUOUS</span> / <span class="font-semibold text-slate-600">NOT_FOUND</span> untuk melihat detail analisa.</p>
+    <div class="relative w-full sm:w-80 sm:flex-shrink-0">
+        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="text" data-pv-search autocomplete="off" spellcheck="false"
+            placeholder="Cari semua kolom…"
+            class="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
+        <button type="button" data-pv-clear title="Bersihkan pencarian"
+            class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none px-1">&times;</button>
+    </div>
+</div>
+<p class="px-4 pb-1 text-xs text-gray-500 text-right" data-pv-count></p>
+<x-table :columns="['Row', 'Status', 'Old Code', 'Old Description', 'Old Class Code', 'Kelas', 'Tarif Efektif', 'New Code', 'New Description', 'New Class Code']" empty="Tidak ada baris." maxHeight="520px">
+    @foreach($rows as $row)
+    @php $clickable = in_array($row['status'] ?? '', ['AMBIGUOUS', 'NOT_FOUND'], true) || !empty($row['suggestions']); @endphp
+    <tr data-pv-row @if($clickable) data-ba-open="{{ $row['excel_row'] }}" title="Klik untuk lihat detail analisa" @endif
+        class="hover:bg-gray-50 transition-colors @if($clickable) cursor-pointer hover:bg-blue-50/60 @endif">
+        <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{{ $row['excel_row'] }}</td>
+        <td class="px-4 py-3 whitespace-nowrap">
+            <x-bridge.status-badge :status="$row['status']" />
+            @if(in_array($row['status'] ?? '', ['AMBIGUOUS', 'NOT_FOUND'], true) && !empty($row['suggested_applied']))
+                <span class="ml-1 inline-flex px-1.5 py-0 text-[10px] font-bold rounded-full bg-green-600 text-white align-middle">ada saran</span>
+            @endif
+        </td>
+        <td class="px-4 py-3 whitespace-nowrap font-mono text-xs bg-gray-50">{{ $row['service_code'] !== '' ? $row['service_code'] : '-' }}</td>
+        <td class="px-4 py-3 text-xs max-w-xs truncate" title="{{ $row['service_description'] !== '' ? $row['service_description'] : '-' }}">{{ $row['service_description'] !== '' ? $row['service_description'] : '-' }}</td>
+        <td class="px-4 py-3 whitespace-nowrap font-mono text-xs bg-gray-50">{{ $row['service_class_code'] !== '' ? $row['service_class_code'] : '-' }}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-xs">{{ $row['class_name'] !== '' ? $row['class_name'] : '-' }}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-xs font-mono bg-teal-50/50">@if(isset($row['effective_tariff']) && is_numeric($row['effective_tariff'])) Rp {{ number_format((float) $row['effective_tariff'], 0, ',', '.') }}@else<span class="text-gray-300">—</span>@endif</td>
+        <td class="px-4 py-3 whitespace-nowrap font-mono text-xs font-semibold bg-blue-50">{{ $row['new_service_code'] ?? '-' }}</td>
+        <td class="px-4 py-3 text-xs max-w-xs truncate font-semibold bg-blue-50" title="{{ $row['new_service_description'] ?? '-' }}">{{ $row['new_service_description'] ?? '-' }}</td>
+        <td class="px-4 py-3 whitespace-nowrap font-mono text-xs font-semibold bg-blue-50">{{ $row['new_class_code'] ?? '-' }}</td>
+    </tr>
+    @endforeach
+    <tr data-pv-empty class="hidden">
+        <td colspan="10" class="px-4 py-8 text-center text-gray-500 text-sm">Tidak ada baris yang cocok dengan pencarian.</td>
+    </tr>
+</x-table>
+</div>
+
+@once
+@push('scripts')
+<script>
+(function () {
+    // Filter client-side tabel preview: satu kata kunci mencari ke
+    // SELURUH teks baris (semua kolom). Case-insensitive.
+    function initScope(scope) {
+        var input = scope.querySelector('[data-pv-search]');
+        if (!input || input.dataset.pvBound) return;
+        input.dataset.pvBound = '1';
+        var clear = scope.querySelector('[data-pv-clear]');
+        var count = scope.querySelector('[data-pv-count]');
+        var rows = Array.prototype.slice.call(scope.querySelectorAll('[data-pv-row]'));
+        var empty = scope.querySelector('[data-pv-empty]');
+        var total = rows.length;
+
+        function renderCount(visible) {
+            if (count) count.textContent = 'Menampilkan ' + visible + ' dari ' + total + ' baris';
+        }
+
+        function apply() {
+            var q = input.value.trim().toLowerCase();
+            var visible = 0;
+            rows.forEach(function (tr) {
+                var hit = q === '' || tr.textContent.toLowerCase().indexOf(q) !== -1;
+                tr.classList.toggle('hidden', !hit);
+                if (hit) visible++;
+            });
+            if (empty) empty.classList.toggle('hidden', visible !== 0);
+            if (clear) clear.classList.toggle('hidden', q === '');
+            renderCount(visible);
+            // Kembali ke atas area scroll tabel agar hasil terlihat.
+            var scroller = scope.querySelector('[style*="max-height"]');
+            if (scroller) scroller.scrollTop = 0;
+        }
+
+        input.addEventListener('input', apply);
+        if (clear) clear.addEventListener('click', function () {
+            input.value = '';
+            apply();
+            input.focus();
+        });
+        renderCount(total);
+    }
+
+    function initAll() {
+        document.querySelectorAll('[data-pv-wrap]').forEach(initScope);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAll);
+    } else {
+        initAll();
+    }
+})();
+</script>
+@endpush
+@endonce
+
+@if(!empty($analysisStore))
+<div data-ba-modal class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-gray-900 bg-opacity-50" data-ba-close></div>
+    <div class="relative w-full max-w-3xl max-h-[85vh] flex flex-col bg-white rounded-lg shadow-xl">
+        <div class="flex items-center justify-between px-4 py-3 border-b">
+            <h3 class="text-base font-semibold text-sp-navy" data-ba-title>Detail Analisa</h3>
+            <button type="button" data-ba-close class="text-gray-400 hover:text-gray-600 text-xl leading-none px-1">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-4 py-3 min-h-0" data-ba-body></div>
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t bg-gray-50 rounded-b-lg">
+            <button type="button" data-ba-close class="px-4 py-2 text-sm font-semibold text-gray-700 rounded-md border border-gray-300 hover:bg-gray-100 transition-colors">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" data-ba-store>{!! json_encode($analysisStore, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
+
+@once
+@push('scripts')
+<script>
+(function () {
+    function esc(v) {
+        return String(v ?? '').replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
+        });
+    }
+    function rupiah(v) {
+        if (v === null || v === undefined || v === '') return '-';
+        try { return 'Rp ' + new Intl.NumberFormat('id-ID').format(v); }
+        catch (e) { return String(v); }
+    }
+    function pct(diff) {
+        if (diff === null || diff === undefined) return '<span class="text-gray-400">tanpa sinyal</span>';
+        return (diff * 100).toFixed(2).replace('.', ',') + '%';
+    }
+    // Presentase rekomendasi = rata-rata dua nilai 0-100:
+    // Kelas (cocok = 100, tidak = 0) dan Tarif (terkecil dibagi
+    // terbesar x 100). Bila tarif tak tersedia, hanya nilai kelas.
+    // PENTING: ini BUKAN kemiripan nama tindakan — kecocokan teks
+    // (tier/jumlah token) ditampilkan terpisah via textBadge().
+    function recPct(diff, cls) {
+        var parts = [cls ? 100 : 0];
+        if (diff !== null && diff !== undefined) parts.push((1 - diff) * 100);
+        var pct = parts.reduce(function (a, b) { return a + b; }, 0) / parts.length;
+        if (pct >= 100) return '<span class="font-bold text-teal-700" title="Rata-rata kecocokan kelas + tarif, bukan kemiripan nama tindakan">100%</span>';
+        if (pct <= 0) return '<span class="font-bold" title="Rata-rata kecocokan kelas + tarif, bukan kemiripan nama tindakan">0%</span>';
+        return '<span class="font-bold" title="Rata-rata kecocokan kelas + tarif, bukan kemiripan nama tindakan">' + pct.toFixed(2).replace('.', ',') + '%</span>';
+    }
+    // Lencana kecocokan teks untuk saran NOT_FOUND: "Teks 1/2".
+    // Peringatan bila bukti teks lemah (< 2 token cocok): % setinggi
+    // apa pun tidak boleh dipercaya membabi-buta (kasus Row 25).
+    function textBadge(s) {
+        if (s.text_matched === null || s.text_matched === undefined || s.text_total === null || s.text_total === undefined) return '';
+        var weak = s.text_matched < 2;
+        return '<span class="' + (weak ? 'text-amber-700 font-semibold' : 'text-gray-500') + '" title="Jumlah token inti tindakan yang cocok di description master (tier ' + esc(s.text_tier === null ? '-' : s.text_tier) + ')">Teks ' + esc(s.text_matched) + '/' + esc(s.text_total) + (weak ? ' ⚠' : '') + '</span>';
+    }
+    function recFull(s) {
+        return textBadge(s) + ' • <span class="text-gray-400">kelas+tarif</span> ' + recPct(s.tariff_diff, s.class_match);
+    }
+    function store() {
+        var el = document.querySelector('[data-ba-store]');
+        if (!el) return {};
+        try { return JSON.parse(el.textContent || '{}'); } catch (e) { return {}; }
+    }
+    function renderCompares(candidates, suggested) {
+        var sugCode = suggested ? suggested.service_code + '|' + suggested.class_code : null;
+        var html = '<div class="overflow-x-auto border border-gray-200 rounded-md"><table class="w-full text-xs min-w-max">'
+            + '<thead><tr class="bg-gray-100">'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700">Kandidat</th>'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700">Kelas Master</th>'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700">Tarif Master</th>'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700">Selisih Tarif</th>'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700" title="Rata-rata kecocokan kelas + tarif, bukan kemiripan nama tindakan">Kelas+Tarif</th>'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700">Kelas Cocok</th>'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700">Skor</th>'
+            + '<th class="px-3 py-2 text-left font-semibold text-gray-700"></th>'
+            + '</tr></thead><tbody class="divide-y divide-gray-100">';
+        candidates.forEach(function (c, i) {
+            var key = c.service_code + '|' + c.class_code;
+            var isSug = sugCode && key === sugCode;
+            html += '<tr class="' + (isSug ? 'bg-green-50 font-semibold' : (i === 0 ? 'bg-yellow-50' : '')) + '">'
+                + '<td class="px-3 py-2 font-mono">' + esc(c.service_code) + '<span class="block font-sans text-gray-500">' + esc(c.service_name || '') + '</span></td>'
+                + '<td class="px-3 py-2 font-mono">' + esc(c.class_code) + '<span class="block font-sans text-gray-500">' + esc(c.class_name || '') + '</span></td>'
+                + '<td class="px-3 py-2 whitespace-nowrap">' + esc(rupiah(c.tariff)) + '</td>'
+                + '<td class="px-3 py-2 whitespace-nowrap">' + pct(c.tariff_diff) + '</td>'
+                + '<td class="px-3 py-2 whitespace-nowrap">' + recPct(c.tariff_diff, c.class_match) + '</td>'
+                + '<td class="px-3 py-2">' + (c.class_match ? '<span class="inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full bg-green-100 text-green-800">Ya</span>' : '<span class="text-gray-400">Tidak</span>') + '</td>'
+                + '<td class="px-3 py-2 font-mono">' + esc(c.score === null ? '-' : c.score) + '</td>'
+                + '<td class="px-3 py-2">' + (isSug ? '<span class="inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full bg-green-600 text-white">Saran</span>' : (i === 0 ? '<span class="inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full bg-yellow-100 text-yellow-800">Teratas</span>' : '')) + '</td>'
+                + '</tr>';
+        });
+        return html + '</tbody></table></div>';
+    }
+    function excelTariffLabel(d) {
+        if (d.tariff !== null && d.tariff !== undefined) return rupiah(d.tariff);
+        if (d.tariff_raw) return esc(d.tariff_raw) + ' (tidak terbaca)';
+        return 'kosong';
+    }
+    function effectiveLabel(d) {
+        if (d.effective_tariff === null || d.effective_tariff === undefined) return 'tidak tersedia';
+        return rupiah(d.effective_tariff);
+    }
+    function qtyLabel(q) {
+        if (q === null || q === undefined || q === '') return '-';
+        return esc(String(q));
+    }
+    // Label asal keyword pencarian saran master (NOT_FOUND).
+    function searchRuleLabel(rule) {
+        return {
+            'room_charge': 'Room Charge → Kamar Perawatan',
+            'visite': 'Visite → frasa kanonis',
+            'core': 'Inti tindakan',
+            'fallback_original': 'Deskripsi asli (fallback)',
+            'kamar_sibling': 'Saudara kamar (jangkar prosedur)',
+            'kamar_sibling_empty': 'Saudara kamar (jangkar kosong)'
+        }[rule] || rule;
+    }
+    function renderBody(d) {
+        var excelTariff = excelTariffLabel(d);
+        var html = '<div class="flex flex-col gap-3 text-sm">'
+            + '<div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Old Code</p><p class="font-mono">' + esc(d.service_code || '-') + '</p></div>'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Old Description</p><p>' + esc(d.service_description || '-') + '</p></div>'
+            + '<div class="border rounded-md p-2 border-blue-300 bg-blue-50"><p class="font-semibold text-blue-700">New Description</p><p>' + esc(d.new_service_description || '-') + '</p></div>'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Old Class Code</p><p class="font-mono">' + esc(d.service_class_code || '-') + '</p></div>'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Kelas</p><p>' + esc(d.class_name || '-') + '</p></div>'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Tarif Excel</p><p class="font-mono">' + excelTariff + '</p></div>'
+            + '<div class="border rounded-md p-2 border-teal-300 bg-teal-50"><p class="font-semibold text-teal-700">Tarif Efektif</p><p class="font-bold text-teal-900 font-mono">' + esc(effectiveLabel(d)) + '</p><p class="text-[11px] text-teal-700">Sumber: ' + esc(d.tariff_source_label || 'tidak tersedia') + '</p></div>'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Total Billed</p><p class="font-mono">' + (d.total_billed === null || d.total_billed === undefined ? '-' : esc(rupiah(d.total_billed))) + '</p></div>'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Quantity</p><p class="font-mono">' + qtyLabel(d.quantity) + '</p></div>'
+            + '<div class="border rounded-md p-2"><p class="font-semibold text-gray-500">Mapping Key</p><p class="font-mono break-all">' + esc(d.mapping_key || '-') + '</p></div>'
+            + '</div>';
+        // Keyword pencarian yang dipakai untuk saran master + teks analisa.
+        if (d.search_query) {
+            html += '<div class="border border-violet-300 bg-violet-50 rounded-md p-2.5 text-xs">'
+                + '<p class="font-semibold text-violet-700">Keyword Pencarian Saran'
+                + (d.search_rule ? ' <span class="font-normal text-violet-500">(' + esc(searchRuleLabel(d.search_rule)) + ')</span>' : '')
+                + '</p>'
+                + '<p class="font-mono font-semibold text-violet-900 break-words mt-0.5">' + esc(d.search_query) + '</p></div>';
+        }
+        if (d.status === 'AMBIGUOUS') {
+            html += '<div><p class="text-xs font-semibold text-gray-600 mb-1">Perbandingan Kandidat (' + d.candidates.length + ')</p>'
+                + '<div class="mb-1.5 text-xs bg-teal-50 border border-teal-300 rounded-md px-2.5 py-1.5">Tarif Pembanding (efektif): <span class="font-bold font-mono">' + esc(effectiveLabel(d)) + '</span> <span class="text-teal-700">— Sumber: ' + esc(d.tariff_source_label || 'tidak tersedia') + '</span></div>'
+                + renderCompares(d.candidates, d.suggested) + '</div>';
+        } else {
+            if (d.status === 'MATCHED' && d.suggestions && d.suggestions.length) {
+                html += '<div class="text-xs bg-green-50 border border-green-200 rounded-md p-2.5">Baris ini <span class="font-bold">valid (MATCHED)</span> karena seluruh saran berkode sama (<span class="font-mono font-bold">' + esc(d.new_service_code || '-') + '</span>). Saran dan analisa tetap ditampilkan — ubah via “Petakan Manual” bila tidak setuju.</div>';
+            }
+            if (d.suggestions && d.suggestions.length) {
+                html += '<div><p class="text-xs font-semibold text-gray-600 mb-1">Rekomendasi (' + d.suggestions.length + ')</p><p class="mb-1 text-[11px] text-gray-500">% = kecocokan <span class="font-semibold">kelas + tarif</span>, bukan kemiripan nama tindakan — periksa kolom Teks.</p><div class="border border-gray-200 rounded-md overflow-hidden">';
+                var weakTop = d.suggestions[0] && d.suggestions[0].text_matched !== null && d.suggestions[0].text_matched !== undefined && d.suggestions[0].text_matched < 2;
+                if (weakTop) {
+                    html += '<div class="px-2.5 py-1.5 text-xs bg-amber-50 border-b border-amber-200 text-amber-800">⚠ Kecocokan teks saran teratas lemah (Teks ' + esc(d.suggestions[0].text_matched) + '/' + esc(d.suggestions[0].text_total) + ') — % tinggi hanya dari kelas + tarif yang dekat. Verifikasi nama tindakan sebelum memilih.</div>';
+                }
+                var farTariff = d.suggestions[0] && d.suggestions[0].tariff_diff !== null && d.suggestions[0].tariff_diff !== undefined && d.suggestions[0].tariff_diff > 0.5;
+                if (farTariff) {
+                    html += '<div class="px-2.5 py-1.5 text-xs bg-amber-50 border-b border-amber-200 text-amber-800">⚠ Selisih tarif saran teratas > 50% dari tarif efektif — kemungkinan komponen (operator / anestesi / kamar operasi) atau kelas tindakan berbeda. Cocokkan dulu komponennya di Petakan Manual.</div>';
+                }
+                d.suggestions.forEach(function (s) {
+                    html += '<div class="px-2.5 py-1.5 text-xs border-b border-gray-100 last:border-0 flex items-center justify-between gap-2">'
+                        + '<span><span class="font-mono font-semibold">' + esc(s.service_code) + '</span> | ' + esc(s.service_description || s.service_code)
+                        + ((s.class_name || s.class_code) ? ' <span class="text-gray-400">(' + esc(s.class_name || s.class_code) + (s.tariff !== null && s.tariff !== undefined ? ' • ' + esc(rupiah(s.tariff)) : '') + ')</span>' : '')
+                        + '</span><span class="whitespace-nowrap">' + recFull(s) + '</span>'
+                        + '</div>';
+                });
+                html += '</div><p class="mt-1 text-[11px] text-gray-500">Pilih salah satunya di “Petakan Manual” bila setuju.</p></div>';
+            }
+        }
+        return html + '</div>';
+    }
+
+    document.addEventListener('click', function (e) {
+        var openBtn = e.target.closest('[data-ba-open]');
+        if (openBtn) {
+            var modal = document.querySelector('[data-ba-modal]');
+            var d = store()[openBtn.getAttribute('data-ba-open')];
+            if (!modal || !d) return;
+            modal.querySelector('[data-ba-title]').textContent = 'Analisa Row ' + d.excel_row + ' — ' + d.status;
+            modal.querySelector('[data-ba-body]').innerHTML = renderBody(d);
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            return;
+        }
+        if (e.target.closest('[data-ba-close]')) {
+            var modal = e.target.closest('[data-ba-modal]');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('[data-ba-modal]').forEach(function (m) { m.classList.add('hidden'); });
+            document.body.classList.remove('overflow-hidden');
+        }
+    });
+})();
+</script>
+@endpush
+@endonce
+@endif
