@@ -8,9 +8,21 @@
         <x-slot name="title">Detail Buku Tarif</x-slot>
         <x-slot name="subtitle">{{ $mapping->tarif?->display_label ?? '-' }}</x-slot>
         <x-slot name="actions">
-            <a href="{{ route('tarif-units.edit', $mapping) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
-                <i class="bi bi-pencil"></i> Edit
-            </a>
+            @if(auth()->user()->hasPermission('edit_tarif_units'))
+                <a href="{{ route('tarif-units.edit', $mapping) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+            @endif
+            @if(auth()->user()->hasPermission('delete_tarif_units'))
+                <form action="{{ route('tarif-units.destroy', $mapping) }}" method="POST" class="inline"
+                      onsubmit="return confirm('Yakin ingin menghapus tarif ini dari buku tarif unit?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-600 border border-red-300 rounded-md bg-white hover:bg-red-50 transition-colors">
+                        <i class="bi bi-trash"></i> Hapus
+                    </button>
+                </form>
+            @endif
             <a href="{{ route('tarif-units.unit', $mapping->organization_unit_id) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
                 <i class="bi bi-arrow-left"></i> Kembali
             </a>

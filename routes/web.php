@@ -117,11 +117,15 @@ Route::middleware('auth')->group(function () {
             ->name('buku-tarif-saya.create');
         Route::post('buku-tarif-saya', [TarifUnitMappingController::class, 'myStore'])
             ->name('buku-tarif-saya.store');
+        // Ubah & hapus punya permission tersendiri, terpisah dari izin input.
         Route::get('buku-tarif-saya/{tarif_unit}/edit', [TarifUnitMappingController::class, 'myEdit'])
+            ->middleware('permission:edit_my_tarif_unit')
             ->name('buku-tarif-saya.edit');
         Route::put('buku-tarif-saya/{tarif_unit}', [TarifUnitMappingController::class, 'myUpdate'])
+            ->middleware('permission:edit_my_tarif_unit')
             ->name('buku-tarif-saya.update');
         Route::delete('buku-tarif-saya/{tarif_unit}', [TarifUnitMappingController::class, 'myDestroy'])
+            ->middleware('permission:delete_my_tarif_unit')
             ->name('buku-tarif-saya.destroy');
     });
 
@@ -136,7 +140,11 @@ Route::middleware('auth')->group(function () {
             ->name('tarif-units.unit.export-xlsx');
         Route::get('tarif-units/unit/{organization_unit}/export-pdf', [TarifUnitMappingController::class, 'exportUnitPdf'])
             ->name('tarif-units.unit.export-pdf');
-        Route::resource('tarif-units', TarifUnitMappingController::class)->parameters(['tarif-units' => 'tarif_unit']);
+        // Edit/update dan hapus dipisah per permission.
+        Route::resource('tarif-units', TarifUnitMappingController::class)
+            ->parameters(['tarif-units' => 'tarif_unit'])
+            ->middlewareFor(['edit', 'update'], 'permission:edit_tarif_units')
+            ->middlewareFor('destroy', 'permission:delete_tarif_units');
     });
 
     // Tarif Management routes
@@ -155,7 +163,10 @@ Route::middleware('auth')->group(function () {
         Route::get('tarifs/import/template', [TarifImportController::class, 'template'])->name('tarif-import.template');
         Route::get('tarifs/export-xlsx', [TarifImportController::class, 'exportXlsx'])->name('tarif-import.export-xlsx');
         Route::get('tarifs/export', [TarifController::class, 'export'])->name('tarifs.export');
-        Route::resource('tarifs', TarifController::class);
+        // Edit/update dan hapus dipisah per permission.
+        Route::resource('tarifs', TarifController::class)
+            ->middlewareFor(['edit', 'update'], 'permission:edit_tarifs')
+            ->middlewareFor('destroy', 'permission:delete_tarifs');
     });
 
 });

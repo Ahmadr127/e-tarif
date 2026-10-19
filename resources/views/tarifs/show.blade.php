@@ -18,9 +18,11 @@
                     <p class="text-xl font-bold text-sp-primary mt-2">Rp {{ number_format($tarif->tariff, 2, ',', '.') }}</p>
                 </div>
                 <div class="flex gap-2">
-                    <a href="{{ route('tarifs.edit', $tarif) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
-                        Edit
-                    </a>
+                    @if(auth()->user()->hasPermission('edit_tarifs'))
+                        <a href="{{ route('tarifs.edit', $tarif) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                            Edit
+                        </a>
+                    @endif
                     <a href="{{ route('tarifs.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
                         Kembali
                     </a>

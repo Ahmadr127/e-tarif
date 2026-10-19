@@ -8,7 +8,10 @@
     $existing = $existing ?? null;
     $backUrl = $ownUnit ? route('buku-tarif-saya.index') : route('tarif-units.unit', $unit);
     $editRoute = $ownUnit ? 'buku-tarif-saya.edit' : 'tarif-units.edit';
+    $destroyRoute = $ownUnit ? 'buku-tarif-saya.destroy' : 'tarif-units.destroy';
     $searchUrl = $ownUnit ? route('buku-tarif-saya.search-tarifs') : route('tarif-units.search-tarifs');
+    $canEdit = auth()->user()->hasPermission($ownUnit ? 'edit_my_tarif_unit' : 'edit_tarif_units');
+    $canDelete = auth()->user()->hasPermission($ownUnit ? 'delete_my_tarif_unit' : 'delete_tarif_units');
 @endphp
 <div class="w-full mx-auto">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -96,7 +99,22 @@
                                         @else
                                             <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Non-Aktif</span>
                                         @endif
-                                        <a href="{{ route($editRoute, $row) }}" class="text-xs font-semibold text-sp-primary hover:text-sp-primary-dark whitespace-nowrap">Edit</a>
+                                        <div class="flex items-center gap-2">
+                                            @if($canEdit)
+                                                <a href="{{ route($editRoute, $row) }}" class="text-xs font-semibold text-sp-primary hover:text-sp-primary-dark whitespace-nowrap">Edit</a>
+                                            @endif
+                                            @if($canDelete)
+                                                <form action="{{ route($destroyRoute, $row) }}" method="POST" class="inline"
+                                                      onsubmit="return confirm('Yakin ingin menghapus tarif ini dari buku tarif unit?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" title="Hapus tarif"
+                                                            class="inline-flex items-center justify-center w-7 h-7 rounded-md text-gray-500 border border-gray-300 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors">
+                                                        <i class="bi bi-trash text-xs"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </li>

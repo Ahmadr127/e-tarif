@@ -58,14 +58,18 @@
                 <td class="px-4 py-3 whitespace-nowrap">
                     <x-actions>
                         <x-actions-item href="{{ route('tarifs.show', $tarif) }}" icon="bi-eye" label="Detail" />
-                        <x-actions-item href="{{ route('tarifs.edit', $tarif) }}" icon="bi-pencil" label="Edit" />
-                        <x-actions-form
-                            action="{{ route('tarifs.destroy', $tarif) }}"
-                            method="DELETE"
-                            icon="bi-trash"
-                            label="Hapus"
-                            confirm="Yakin ingin menghapus tarif ini?"
-                        />
+                        @if(auth()->user()->hasPermission('edit_tarifs'))
+                            <x-actions-item href="{{ route('tarifs.edit', $tarif) }}" icon="bi-pencil" label="Edit" />
+                        @endif
+                        @if(auth()->user()->hasPermission('delete_tarifs'))
+                            <x-actions-form
+                                action="{{ route('tarifs.destroy', $tarif) }}"
+                                method="DELETE"
+                                icon="bi-trash"
+                                label="Hapus"
+                                confirm="Yakin ingin menghapus tarif ini?"
+                            />
+                        @endif
                     </x-actions>
                 </td>
             </tr>

@@ -49,6 +49,14 @@ class TarifUnitMappingTest extends TestCase
         $permission = Permission::create(['name' => 'manage_tarif_units', 'display_name' => 'Kelola Tarif Unit']);
         $role->permissions()->attach($permission->id);
 
+        // Permission aksi ubah/hapus Buku Tarif admin.
+        $role->permissions()->attach(
+            Permission::create(['name' => 'edit_tarif_units', 'display_name' => 'Ubah Buku Tarif'])->id
+        );
+        $role->permissions()->attach(
+            Permission::create(['name' => 'delete_tarif_units', 'display_name' => 'Hapus Buku Tarif'])->id
+        );
+
         // Role operator unit: hanya mengelola buku tarif unitnya sendiri.
         $userRole = Role::create(['name' => 'user', 'display_name' => 'Pengguna']);
         $userPermission = Permission::create([
@@ -56,6 +64,14 @@ class TarifUnitMappingTest extends TestCase
             'display_name' => 'Kelola Buku Tarif Unit Saya',
         ]);
         $userRole->permissions()->attach($userPermission->id);
+
+        // Permission aksi ubah/hapus Buku Tarif unit sendiri.
+        $userRole->permissions()->attach(
+            Permission::create(['name' => 'edit_my_tarif_unit', 'display_name' => 'Ubah Buku Tarif Unit Saya'])->id
+        );
+        $userRole->permissions()->attach(
+            Permission::create(['name' => 'delete_my_tarif_unit', 'display_name' => 'Hapus Buku Tarif Unit Saya'])->id
+        );
 
         $this->admin = User::create([
             'name' => 'Admin',
@@ -550,6 +566,124 @@ class TarifUnitMappingTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('tarif_id');
+    }
+
+    public function test_unit_page_hides_edit_and_delete_without_those_permissions(): void
+    {
+        $this->makeMapping();
+
+        $readOnly = Role::create(['name' => 'readonly', 'display_name' => 'Read Only']);
+        $readOnly->permissions()->attach(
+            Permission::where('name', 'manage_tarif_units')->value('id')
+        );
+
+        $user = User::create([
+            'name' => 'Pembaca',
+            'email' => 'baca@example.com',
+            'password' => 'secret',
+            'role_id' => $readOnly->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('tarif-units.unit', $this->unit));
+
+        $response->assertOk();
+        $response->assertDontSee('Edit');
+        $response->assertDontSee('Hapus');
+    }
+
+    public function test_update_and_destroy_require_their_own_permissions(): void
+    {
+        $mapping = $this->makeMapping();
+
+        $readOnly = Role::create(['name' => 'readonly', 'display_name' => 'Read Only']);
+        $readOnly->permissions()->attach(
+            Permission::where('name', 'manage_tarif_units')->value('id')
+        );
+
+        $user = User::create([
+            'name' => 'Pembaca',
+            'email' => 'baca@example.com',
+            'password' => 'secret',
+            'role_id' => $readOnly->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('tarif-units.edit', $mapping))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->put(route('tarif-units.update', $mapping), [
+                'tarif_id' => $this->tarif->id,
+                'organization_unit_id' => $this->unit->id,
+                'status' => 'inactive',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->delete(route('tarif-units.destroy', $mapping))
+            ->assertForbidden();
+
+        $this->assertSame('active', $mapping->refresh()->status);
+    }
+
+    public function test_my_unit_update_and_destroy_require_their_own_permissions(): void
+    {
+        $mapping = $this->makeMapping();
+
+        $limited = Role::create(['name' => 'limited', 'display_name' => 'Limited']);
+        $limited->permissions()->attach(
+            Permission::where('name', 'manage_my_tarif_unit')->value('id')
+        );
+
+        $user = User::create([
+            'name' => 'Terbatas',
+            'email' => 'terbatas@example.com',
+            'password' => 'secret',
+            'role_id' => $limited->id,
+            'organization_unit_id' => $this->unit->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('buku-tarif-saya.edit', $mapping))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->put(route('buku-tarif-saya.update', $mapping), [
+                'tarif_id' => $this->tarif->id,
+                'organization_unit_id' => $this->unit->id,
+                'status' => 'inactive',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->delete(route('buku-tarif-saya.destroy', $mapping))
+            ->assertForbidden();
+
+        $this->assertSame('active', $mapping->refresh()->status);
+    }
+
+    public function test_create_page_lists_existing_tarifs_with_delete_button(): void
+    {
+        $this->makeMapping(['notes' => 'Sudah terdaftar']);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('tarif-units.create', ['unit_id' => $this->unit->id]));
+
+        $response->assertOk();
+        $response->assertSee('Sudah ada di buku tarif unit ini');
+        $response->assertSee('KONS01');
+        $response->assertSee(route('tarif-units.destroy', TarifUnitMapping::first()), false);
+    }
+
+    public function test_my_unit_create_page_lists_existing_tarifs(): void
+    {
+        $this->makeMapping();
+
+        $response = $this->actingAs($this->unitUser)->get(route('buku-tarif-saya.create'));
+
+        $response->assertOk();
+        $response->assertSee('Sudah ada di buku tarif unit ini');
+        $response->assertSee(route('buku-tarif-saya.destroy', TarifUnitMapping::first()), false);
     }
 
     public function test_destroy_deletes_mapping(): void

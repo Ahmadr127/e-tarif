@@ -8,6 +8,8 @@
     // Export mengikuti filter aktif (search/status) di halaman ini.
     $exportBase = $ownUnit ? 'buku-tarif-saya.export' : 'tarif-units.unit.export';
     $exportParams = $ownUnit ? request()->query() : (['organization_unit' => $unit->id] + request()->query());
+    $canEdit = auth()->user()->hasPermission($ownUnit ? 'edit_my_tarif_unit' : 'edit_tarif_units');
+    $canDelete = auth()->user()->hasPermission($ownUnit ? 'delete_my_tarif_unit' : 'delete_tarif_units');
 @endphp
 <div class="w-full mx-auto">
     <x-card padding="false">
@@ -90,14 +92,18 @@
                         @unless($ownUnit)
                             <x-actions-item href="{{ route('tarif-units.show', $mapping) }}" icon="bi-eye" label="Detail" />
                         @endunless
-                        <x-actions-item href="{{ $ownUnit ? route('buku-tarif-saya.edit', $mapping) : route('tarif-units.edit', $mapping) }}" icon="bi-pencil" label="Edit" />
-                        <x-actions-form
-                            action="{{ $ownUnit ? route('buku-tarif-saya.destroy', $mapping) : route('tarif-units.destroy', $mapping) }}"
-                            method="DELETE"
-                            icon="bi-trash"
-                            label="Hapus"
-                            confirm="Yakin ingin menghapus tarif ini dari buku tarif unit?"
-                        />
+                        @if($canEdit)
+                            <x-actions-item href="{{ $ownUnit ? route('buku-tarif-saya.edit', $mapping) : route('tarif-units.edit', $mapping) }}" icon="bi-pencil" label="Edit" />
+                        @endif
+                        @if($canDelete)
+                            <x-actions-form
+                                action="{{ $ownUnit ? route('buku-tarif-saya.destroy', $mapping) : route('tarif-units.destroy', $mapping) }}"
+                                method="DELETE"
+                                icon="bi-trash"
+                                label="Hapus"
+                                confirm="Yakin ingin menghapus tarif ini dari buku tarif unit?"
+                            />
+                        @endif
                     </x-actions>
                 </td>
             </tr>
