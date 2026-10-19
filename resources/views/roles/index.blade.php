@@ -35,7 +35,7 @@
     </div>
 
     {{-- ===================== DATA ROLE ===================== --}}
-    <x-card padding="false">
+    {{-- <x-card padding="false">
         <x-slot name="title">Data Role</x-slot>
         <x-slot name="subtitle">Daftar role dalam sistem</x-slot>
         <x-slot name="actions">
@@ -49,52 +49,16 @@
                 <i class="bi bi-plus-lg"></i> Tambah Role
             </button>
         </x-slot>
-
-        <x-table :columns="['No', 'Nama Role', 'Deskripsi', 'Total User', 'Status', 'Aksi']" :pagination="$roles" class="border-0 rounded-none shadow-none">
-            @foreach($roles as $role)
-            <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ ($roles->firstItem() ?? 1) + $loop->index }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    <div class="text-sm font-semibold text-gray-900">{{ $role->display_name }}</div>
-                    <div class="text-xs text-gray-500 font-mono">{{ $role->name }}</div>
-                </td>
-                <td class="px-4 py-3 text-sm text-gray-600 max-w-[14rem]">
-                    <span class="line-clamp-2">{{ $role->description ?? '-' }}</span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $role->users_count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' }}">
-                        {{ $role->users_count }} user
-                    </span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full {{ $role->is_active ? 'bg-sp-primary/10 text-sp-primary' : 'bg-gray-100 text-gray-600' }}">
-                        <i class="bi {{ $role->is_active ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
-                        {{ $role->is_active ? 'Aktif' : 'Tidak Aktif' }}
-                    </span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    <x-actions>
-                        <x-actions-item icon="bi-pencil" label="Edit" @click="openEdit({{ $role->id }})" />
-                        <x-actions-form
-                            action="{{ route('roles.destroy', $role) }}"
-                            method="DELETE"
-                            icon="bi-trash"
-                            label="Hapus"
-                            color="text-gray-700 hover:bg-red-50 hover:text-red-600"
-                            confirm="Yakin ingin menghapus role ini?"
-                        />
-                    </x-actions>
-                </td>
-            </tr>
-            @endforeach
-        </x-table>
-    </x-card>
+    </x-card> --}}
 
     {{-- ===================== MATRIKS PERMISSION ===================== --}}
     <x-card padding="false">
         <x-slot name="title">Kelola Permission</x-slot>
         <x-slot name="subtitle">Centang hak akses tiap role, lalu simpan sekali untuk semua role</x-slot>
-
+         <button type="button" @click="openCreate()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
+                <i class="bi bi-plus-lg"></i> Tambah Role
+            </button>
         <form action="{{ route('roles.permissions.sync') }}" method="POST">
             @csrf
             @method('PUT')
