@@ -54,7 +54,7 @@
         </form>
     </x-card>
 
-    @if($existing->total() > 0)
+    {{-- @if($existing->total() > 0)
     <div class="mt-4">
         <x-card padding="false">
             <x-slot name="title">Sudah ada di buku tarif unit ini</x-slot>
@@ -81,6 +81,6 @@
             </ul>
         </x-card>
     </div>
-    @endif
+    @endif --}}
 </div>
 @endsection
