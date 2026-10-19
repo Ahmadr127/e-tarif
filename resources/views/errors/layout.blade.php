@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>@yield('code') &middot; @yield('title') | Mapping Tarif</title>
+    <title>@yield('code') &middot; @yield('title') | {{ config('app.name') }}</title>
     <style>
         body {
             margin: 0;
@@ -65,7 +65,7 @@
 </head>
 <body>
     <div class="page">
-        <div class="brand"><span></span>Mapping Tarif</div>
+        <div class="brand"><span></span>{{ config('app.name') }}</div>
 
         <p class="code">@yield('code')</p>
         <h1>@yield('title')</h1>

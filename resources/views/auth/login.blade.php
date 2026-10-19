@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Login - Mapping Tarif')
+@section('title', 'Login - ' . config('app.name'))
 
 @section('content')
 <div class="min-h-screen w-full flex">
@@ -12,8 +12,8 @@
                 <div class="rounded-2xl border border-green-200 bg-white shadow-md p-4 mb-3">
                     <img src="{{ asset('images/logo.png') }}" alt="Logo" class="h-16 object-contain" />
                 </div>
-                <h2 class="text-2xl font-bold text-gray-800">Mapping Tarif</h2>
-                <p class="text-sm text-gray-600">Mapping Tarif</p>
+                <h2 class="text-2xl font-bold text-gray-800">{{ config('app.name') }}</h2>
+                <p class="text-sm text-gray-600">{{ config('app.name') }}</p>
             </div>
 
             <!-- Login Card -->
@@ -107,7 +107,7 @@
 
                 <!-- Footer -->
                 <div class="mt-6 text-center text-sm text-gray-500">
-                    <p>© {{ date('Y') }} Mapping Tarif. All rights reserved.</p>
+                    <p>© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
                 </div>
             </div>
         </div>
@@ -129,9 +129,9 @@
             </div>
 
             <!-- App Name -->
-            <h1 class="text-5xl font-bold mb-4 text-center">Mapping Tarif</h1>
+            <h1 class="text-5xl font-bold mb-4 text-center">{{ config('app.name') }}</h1>
             {{-- <p class="text-xl text-green-100 text-center max-w-md">
-                Mapping Tarif Starterpack
+                {{ config('app.name') }} Starterpack
             </p> --}}
         </div>
     </div>

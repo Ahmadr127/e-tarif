@@ -279,6 +279,19 @@ class ImportSimutuUsersTest extends TestCase
         $this->assertNull(User::where('username', 'budi.ns3')->firstOrFail()->organization_unit_id);
     }
 
+    public function test_flag_default_password_memaksa_password_semua_user(): void
+    {
+        $this->artisan('users:import-simutu', ['file' => $this->fixturePath, '--default-password' => 'rsazra'])
+            ->assertExitCode(0);
+
+        foreach (['admin.simutu', 'budi.ns3', 'tanpa.unit'] as $username) {
+            $this->assertTrue(
+                Hash::check('rsazra', User::where('username', $username)->value('password')),
+                "Password {$username} tidak memakai default."
+            );
+        }
+    }
+
     public function test_file_json_tidak_ada_mengembalikan_gagal(): void
     {
         $this->artisan('users:import-simutu', ['file' => 'tidak/ada.json'])

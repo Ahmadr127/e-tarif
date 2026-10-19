@@ -51,6 +51,6 @@ class ErrorPagesTest extends TestCase
             ->assertNotFound()
             ->assertSee('Halaman Tidak Ditemukan')
             ->assertSee('404')
-            ->assertSee('Mapping Tarif');
+            ->assertSee('Buku Tarif');
     }
 }
