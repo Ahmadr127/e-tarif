@@ -15,16 +15,44 @@ class RoleController extends Controller
     public function index(\Illuminate\Http\Request $request)
     {
         $roles = $this->roleService->getRoles($request->only(['search', 'date_from', 'date_to', 'per_page']));
-        $permissions = Permission::all();
+        $permissions = Permission::orderBy('name')->get();
         $stats = $this->roleService->getStats();
+
+        // Matriks hak akses: kolom = role (semua role, bukan hanya halaman aktif),
+        // baris = permission dikelompokkan per awalan (manage/view/edit/delete).
+        $matrixRoles = Role::with('permissions')->orderBy('name')->get();
+        $permissionGroups = $permissions->groupBy(
+            fn (Permission $permission) => str_contains($permission->name, '_')
+                ? str($permission->name)->before('_')->toString()
+                : 'lainnya'
+        );
 
         return view('roles.index', [
             'roles' => $roles,
             'permissions' => $permissions,
+            'matrixRoles' => $matrixRoles,
+            'permissionGroups' => $permissionGroups,
             'totalRoles' => $stats['total'],
             'activeRoles' => $stats['active'],
             'inactiveRoles' => $stats['inactive'],
         ]);
+    }
+
+    /**
+     * Simpan matriks permission (checkbox per role) sekaligus.
+     */
+    public function syncPermissions(\Illuminate\Http\Request $request)
+    {
+        $data = $request->validate([
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['array'],
+            'permissions.*.*' => ['integer', 'exists:permissions,id'],
+        ]);
+
+        $this->roleService->syncRolePermissions($data['permissions'] ?? []);
+
+        return redirect()->route('roles.index')
+            ->with('success', 'Hak akses role berhasil diperbarui.');
     }
 
     public function create()

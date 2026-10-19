@@ -93,6 +93,39 @@ class RoleService
         return $role;
     }
 
+    /**
+     * Sinkronkan permission untuk banyak role sekaligus (matriks checkbox).
+     *
+     * @param  array<int|string, array<int, int|string>>  $permissionsByRole  [role_id => [permission_id, ...]]
+     */
+    public function syncRolePermissions(array $permissionsByRole): void
+    {
+        foreach (Role::all() as $role) {
+            $permissionIds = $permissionsByRole[$role->id] ?? [];
+            $permissionIds = array_values(array_unique(array_map('intval', (array) $permissionIds)));
+
+            $before = $role->permissions()->pluck('permissions.id')->sort()->values()->all();
+
+            $role->permissions()->sync($permissionIds);
+
+            $after = $role->permissions()->pluck('permissions.id')->sort()->values()->all();
+
+            if ($before === $after) {
+                continue;
+            }
+
+            $this->activityLogger->log(
+                $role,
+                'updated',
+                [
+                    'old' => ['permissions' => $before],
+                    'new' => ['permissions' => $after],
+                ],
+                'Memperbarui hak akses role '.$role->display_name
+            );
+        }
+    }
+
     public function deleteRole(Role $role)
     {
         if ($role->users()->count() > 0) {
