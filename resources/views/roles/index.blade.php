@@ -28,11 +28,11 @@
 <div class="space-y-5" x-data="roleModal({{ Js::from($roleDataMap) }})">
 
     {{-- Stats --}}
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    {{-- <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <x-stats label="Total Role" :value="$totalRoles" icon="bi-shield-lock-fill" color="bg-blue-500" />
         <x-stats label="Role Aktif" :value="$activeRoles" icon="bi-shield-check" color="bg-sp-primary" />
         <x-stats label="Role Tidak Aktif" :value="$inactiveRoles" icon="bi-shield-x" color="bg-red-500" />
-    </div>
+    </div> --}}
 
     {{-- ===================== DATA ROLE ===================== --}}
     {{-- <x-card padding="false">
