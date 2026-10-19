@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use JsonException;
 use RuntimeException;
 
@@ -272,7 +271,8 @@ class ImportSimutuUsers extends Command
     }
 
     /**
-     * Password di JSON sudah hash bcrypt; kalau ternyata plain text, di-hash dulu.
+     * Password di JSON sudah hash bcrypt; kalau ternyata kosong/plain text,
+     * dipakai default "rsazra" (di-hash lebih dulu).
      */
     protected function passwordFor(mixed $value): string
     {
@@ -282,7 +282,7 @@ class ImportSimutuUsers extends Command
             return $value;
         }
 
-        return Hash::make($value !== '' ? $value : Str::random(16));
+        return Hash::make($value !== '' ? $value : 'rsazra');
     }
 
     protected function uniqueEmail(string $email, string $username, ?int $ignoreUserId = null): string

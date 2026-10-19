@@ -12,7 +12,7 @@ use Illuminate\Database\Seeder;
  *
  * Akun "user" ditempatkan di Departemen IT (unit dibuat oleh
  * OrganizationUnitSeeder) supaya fitur "Buku Tarif Unit Saya" (/buku-tarif-saya)
- * langsung bisa dipakai. Password default keduanya: 123
+ * langsung bisa dipakai. Password default keduanya: rsazra
  */
 class UserSeeder extends Seeder
 {
@@ -27,7 +27,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Administrator',
                 'email' => 'admin@example.com',
-                'password' => '123',
+                'password' => 'rsazra',
                 'role_id' => $adminRole->id,
                 'organization_unit_id' => null,
             ]
@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'User',
                 'email' => 'user@example.com',
-                'password' => '123',
+                'password' => 'rsazra',
                 'role_id' => $userRole->id,
                 'organization_unit_id' => $itUnit?->id,
             ]

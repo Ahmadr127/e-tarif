@@ -152,8 +152,8 @@ class DefaultUserSeederTest extends TestCase
     {
         $this->seedDefaults();
 
-        $this->assertTrue(Hash::check('123', User::where('username', 'admin')->value('password')));
-        $this->assertTrue(Hash::check('123', User::where('username', 'user')->value('password')));
+        $this->assertTrue(Hash::check('rsazra', User::where('username', 'admin')->value('password')));
+        $this->assertTrue(Hash::check('rsazra', User::where('username', 'user')->value('password')));
     }
 
     public function test_seeder_aman_dijalankan_berulang(): void
