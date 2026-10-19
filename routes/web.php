@@ -14,6 +14,7 @@ use App\Http\Controllers\ServiceClassController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\TarifController;
 use App\Http\Controllers\TarifImportController;
+use App\Http\Controllers\TarifUnitMappingController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -101,6 +102,35 @@ Route::middleware('auth')->group(function () {
         Route::resource('helpers', HelperController::class);
     });
 
+    // Buku Tarif unit sendiri (role operator unit): unit diambil dari profil
+    // pengguna, jadi namanya dibedakan agar tidak bentrok dengan pola menu admin.
+    Route::middleware('permission:manage_my_tarif_unit')->group(function () {
+        Route::get('buku-tarif-saya/search-tarifs', [TarifUnitMappingController::class, 'searchTarifs'])
+            ->name('buku-tarif-saya.search-tarifs');
+        Route::get('buku-tarif-saya', [TarifUnitMappingController::class, 'myUnit'])
+            ->name('buku-tarif-saya.index');
+        Route::get('buku-tarif-saya/input', [TarifUnitMappingController::class, 'myCreate'])
+            ->name('buku-tarif-saya.create');
+        Route::post('buku-tarif-saya', [TarifUnitMappingController::class, 'myStore'])
+            ->name('buku-tarif-saya.store');
+        Route::get('buku-tarif-saya/{tarif_unit}/edit', [TarifUnitMappingController::class, 'myEdit'])
+            ->name('buku-tarif-saya.edit');
+        Route::put('buku-tarif-saya/{tarif_unit}', [TarifUnitMappingController::class, 'myUpdate'])
+            ->name('buku-tarif-saya.update');
+        Route::delete('buku-tarif-saya/{tarif_unit}', [TarifUnitMappingController::class, 'myDestroy'])
+            ->name('buku-tarif-saya.destroy');
+    });
+
+    // Buku Tarif routes (pemetaan tarif ke unit organisasi)
+    Route::middleware('permission:manage_tarif_units')->group(function () {
+        // Rute kustom didaftarkan lebih dulu agar tidak tertangkap {tarif_unit}.
+        Route::get('tarif-units/search-tarifs', [TarifUnitMappingController::class, 'searchTarifs'])
+            ->name('tarif-units.search-tarifs');
+        Route::get('tarif-units/unit/{organization_unit}', [TarifUnitMappingController::class, 'unit'])
+            ->name('tarif-units.unit');
+        Route::resource('tarif-units', TarifUnitMappingController::class)->parameters(['tarif-units' => 'tarif_unit']);
+    });
+
     // Tarif Management routes
     Route::middleware('permission:manage_tarifs')->group(function () {
         Route::get('tarifs/import', [TarifImportController::class, 'index'])->name('tarif-import.index');
@@ -117,14 +147,6 @@ Route::middleware('auth')->group(function () {
         Route::get('tarifs/import/template', [TarifImportController::class, 'template'])->name('tarif-import.template');
         Route::get('tarifs/export-xlsx', [TarifImportController::class, 'exportXlsx'])->name('tarif-import.export-xlsx');
         Route::get('tarifs/export', [TarifController::class, 'export'])->name('tarifs.export');
-        Route::get('bridge', [\App\Http\Controllers\BridgeTarifController::class, 'index'])->name('bridge.index');
-        Route::post('bridge/scan', [\App\Http\Controllers\BridgeTarifController::class, 'scan'])->name('bridge.scan');
-        Route::post('bridge/resolve', [\App\Http\Controllers\BridgeTarifController::class, 'resolveMapping'])->name('bridge.resolve');
-        Route::post('bridge/resolve-batch', [\App\Http\Controllers\BridgeTarifController::class, 'resolveBatch'])->name('bridge.resolve-batch');
-        Route::get('bridge/result/{token}', [\App\Http\Controllers\BridgeTarifController::class, 'showResult'])->name('bridge.result')->where('token', '[A-Za-z0-9]{16,64}');
-        Route::post('bridge/generate', [\App\Http\Controllers\BridgeTarifController::class, 'generate'])->name('bridge.generate');
-        Route::get('bridge/search-services', [\App\Http\Controllers\BridgeTarifController::class, 'searchServices'])->name('bridge.search-services');
-        Route::get('bridge/download/{token}', [\App\Http\Controllers\BridgeTarifController::class, 'download'])->name('bridge.download');
         Route::resource('tarifs', TarifController::class);
     });
 

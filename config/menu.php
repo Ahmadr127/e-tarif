@@ -92,18 +92,26 @@ return [
         // 'title' => 'Management Tarif',
         'menus' => [
             [
-                'label' => 'Buku Tarif',
+                'label' => 'Daftar Tarif',
                 'icon' => 'bi-cash-coin',
                 'route' => 'tarifs.index',
                 'route_pattern' => 'tarifs.*',
                 'permission' => 'manage_tarifs',
             ],
             [
-                'label' => 'Mapping Tarif',
-                'icon' => 'bi-arrow-left-right',
-                'route' => 'bridge.index',
-                'route_pattern' => 'bridge.*',
-                'permission' => 'manage_tarifs',
+                'label' => 'Buku Tarif',
+                'icon' => 'bi-journal-bookmark-fill',
+                'route' => 'tarif-units.index',
+                'route_pattern' => 'tarif-units.*',
+                'permission' => 'manage_tarif_units',
+            ],
+            [
+                // Versi operator unit: langsung membuka buku tarif unitnya sendiri.
+                'label' => 'Buku Tarif',
+                'icon' => 'bi-journal-bookmark',
+                'route' => 'buku-tarif-saya.index',
+                'route_pattern' => 'buku-tarif-saya.*',
+                'permission' => 'manage_my_tarif_unit',
             ],
             [
                 'label' => 'Master & Tarif',

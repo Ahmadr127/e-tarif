@@ -88,6 +88,16 @@ class OrganizationUnit extends Model
     }
 
     /**
+     * Pemetaan tarif yang berlaku pada unit ini.
+     *
+     * @return HasMany<TarifUnitMapping, $this>
+     */
+    public function tarifMappings(): HasMany
+    {
+        return $this->hasMany(TarifUnitMapping::class);
+    }
+
+    /**
      * Get all ancestors (parent hierarchy)
      *
      * @return Collection<int, OrganizationUnit>

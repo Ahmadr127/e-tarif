@@ -9,15 +9,15 @@
             <x-slot name="title">Jalan Pintas</x-slot>
             <div class="p-4 flex flex-wrap gap-2">
                 <a href="{{ route('tarifs.index') }}" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
-                    <i class="bi bi-book"></i> Buku Tarif
+                    <i class="bi bi-book"></i> Daftar Tarif
                 </a>
-                <a href="{{ route('bridge.index') }}" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-sp-navy rounded-md border border-gray-300 bg-white hover:bg-gray-50 transition-colors">
-                    <i class="bi bi-arrow-left-right"></i> Mapping Tarif
-                </a>
+                @if(auth()->user()->hasPermission('manage_tarif_units'))
+                    <a href="{{ route('tarif-units.index') }}" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-sp-navy rounded-md border border-gray-300 bg-white hover:bg-gray-50 transition-colors">
+                        <i class="bi bi-journal-bookmark-fill"></i> Buku Tarif
+                    </a>
+                @endif
             </div>
         </x-card>
-
-        <x-bridge.upload-form />
     @else
         <x-card padding="false">
             <x-slot name="title">Selamat Datang, {{ auth()->user()->name }}!</x-slot>

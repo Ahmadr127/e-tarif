@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Buku Tarif')
+@section('title', 'Daftar Tarif')
 
 @section('content')
 <div class="w-full mx-auto">
     <x-card padding="false">
-        <x-slot name="title">Buku Tarif</x-slot>
+        <x-slot name="title">Daftar Tarif</x-slot>
         <x-slot name="subtitle">Satu tabel dinamis untuk tarif, obat, alkes, bhp, dan makanan</x-slot>
         <x-slot name="actions">
             <a href="{{ route('tarif-import.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">

@@ -4,6 +4,7 @@ namespace App\Http\Services;
 
 use App\Models\JenisTarif;
 use App\Models\Tarif;
+use App\Services\Tarif\TarifSurgeryFlag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -49,11 +50,11 @@ class TarifExportService
     /**
      * Label kolom Surgery Type di file export: 'OK' bila nama/deskripsi
      * service memuat kata "tindakan" atau "bedah", selain itu 'NON OK'.
-     * Aturan tunggal di BridgeTarifSurgeryFlag (sama dengan export bridge).
+     * Aturan tunggal ada di TarifSurgeryFlag.
      */
     public static function surgeryLabel(?string $name, ?string $description): string
     {
-        return \App\Services\Bridge\BridgeTarifSurgeryFlag::label($name, $description);
+        return TarifSurgeryFlag::label($name, $description);
     }
 
     /**

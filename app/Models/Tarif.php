@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 class Tarif extends Model
@@ -63,6 +64,28 @@ class Tarif extends Model
     public function serviceClass(): BelongsTo
     {
         return $this->belongsTo(ServiceClass::class, 'class_id');
+    }
+
+    /**
+     * Pemetaan tarif ini ke unit organisasi.
+     *
+     * @return HasMany<TarifUnitMapping, $this>
+     */
+    public function unitMappings(): HasMany
+    {
+        return $this->hasMany(TarifUnitMapping::class);
+    }
+
+    /**
+     * Label ringkas untuk dropdown/daftar: "KODE — keterangan (Kelas)".
+     */
+    public function getDisplayLabelAttribute(): string
+    {
+        $code = $this->service?->code ?? '-';
+        $description = $this->service?->description ?: ($this->service?->name ?? '-');
+        $class = $this->serviceClass?->name ?? '-';
+
+        return "{$code} — {$description} ({$class})";
     }
 
     /**
