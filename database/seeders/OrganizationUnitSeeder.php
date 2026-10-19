@@ -14,6 +14,33 @@ class OrganizationUnitSeeder extends Seeder
 {
     public function run(): void
     {
+        // Unit minimal yang dipakai user default ("user" ada di Departemen IT).
+        // Blok contoh di bawah sengaja dibiarkan ter-comment untuk pengembangan.
+        $holdingType = OrganizationType::where('name', 'holding')->first();
+        $departmentType = OrganizationType::where('name', 'department')->first();
+
+        $direkturUtama = OrganizationUnit::firstOrCreate(
+            ['code' => 'DIRUT'],
+            [
+                'name' => 'Direktur Utama',
+                'type_id' => $holdingType->id,
+                'parent_id' => null,
+                'description' => 'Unit tertinggi organisasi',
+                'is_active' => true,
+            ]
+        );
+
+        OrganizationUnit::firstOrCreate(
+            ['code' => 'IT'],
+            [
+                'name' => 'Departemen IT',
+                'type_id' => $departmentType->id,
+                'parent_id' => $direkturUtama->id,
+                'description' => 'Departemen Teknologi Informasi',
+                'is_active' => true,
+            ]
+        );
+
     //     // Get types
     //     $holdingType = OrganizationType::where('name', 'holding')->first();
     //     $hospitalType = OrganizationType::where('name', 'hospital')->first();

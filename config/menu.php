@@ -99,14 +99,13 @@ return [
                 'permission' => 'manage_tarifs',
             ],
             [
-                'label' => 'Buku Tarif',
+                'label' => 'Buku Tarif Admin',
                 'icon' => 'bi-journal-bookmark-fill',
                 'route' => 'tarif-units.index',
                 'route_pattern' => 'tarif-units.*',
                 'permission' => 'manage_tarif_units',
             ],
             [
-                // Versi operator unit: langsung membuka buku tarif unitnya sendiri.
                 'label' => 'Buku Tarif',
                 'icon' => 'bi-journal-bookmark',
                 'route' => 'buku-tarif-saya.index',
