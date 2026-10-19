@@ -45,7 +45,7 @@
         class="w-full text-sm px-3 py-2 border rounded-md outline-none transition-colors bg-white placeholder-gray-400 border-gray-300 focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary"
     >
 
-    <div data-tp-list class="hidden absolute z-20 mt-1 w-full max-h-64 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg"></div>
+    <div data-tp-list class="hidden fixed z-50 max-h-64 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg"></div>
 
     <p class="mt-1 text-xs text-gray-400">Pencarian mencakup kode service, keterangan, kelas, dan provider.</p>
 
@@ -59,10 +59,47 @@
 <script>
 (function () {
     let tpTimer = null;
+    let tpOpenRoot = null;
 
     const tpList = (root) => root.querySelector('[data-tp-list]');
     const tpInput = (root) => root.querySelector('[data-tp-input]');
     const tpValue = (root) => root.querySelector('[data-tp-value]');
+
+    // Daftar saran diposisikan fixed mengikuti input, supaya tidak terpotong
+    // container yang overflow (kartu/pembungkus tabel).
+    function tpPlace(root) {
+        const list = tpList(root);
+        const rect = tpInput(root).getBoundingClientRect();
+
+        list.style.top = (rect.bottom + 4) + 'px';
+        list.style.left = rect.left + 'px';
+        list.style.width = rect.width + 'px';
+    }
+
+    function tpShow(root) {
+        tpOpenRoot = root;
+        tpPlace(root);
+        tpList(root).classList.remove('hidden');
+    }
+
+    function tpHide(root) {
+        tpList(root).classList.add('hidden');
+        if (tpOpenRoot === root) tpOpenRoot = null;
+    }
+
+    function tpHideAll() {
+        document.querySelectorAll('[data-tp-list]').forEach((list) => list.classList.add('hidden'));
+        tpOpenRoot = null;
+    }
+
+    function tpReposition() {
+        if (! tpOpenRoot) return;
+        if (! tpOpenRoot.isConnected) {
+            tpOpenRoot = null;
+            return;
+        }
+        tpPlace(tpOpenRoot);
+    }
 
     function tpMessage(root, text, cls) {
         const list = tpList(root);
@@ -71,7 +108,7 @@
         div.className = 'px-3 py-2 text-sm ' + (cls || 'text-gray-500');
         div.textContent = text;
         list.appendChild(div);
-        list.classList.remove('hidden');
+        tpShow(root);
     }
 
     function tpRender(root, items) {
@@ -90,7 +127,8 @@
             btn.textContent = item.label;
             list.appendChild(btn);
         });
-        list.classList.remove('hidden');
+
+        tpShow(root);
     }
 
     async function tpFetch(root, params) {
@@ -137,11 +175,15 @@
         tpValue(root).value = '';
         const q = input.value.trim();
         if (q.length < 2) {
-            tpList(root).classList.add('hidden');
+            tpHide(root);
             return;
         }
         tpTimer = setTimeout(() => tpSearch(root, q), 300);
     });
+
+    // Daftar saran ikut bergerak saat halaman di-scroll atau di-resize.
+    window.addEventListener('scroll', tpReposition, true);
+    window.addEventListener('resize', tpReposition);
 
     document.addEventListener('click', (e) => {
         const item = e.target.closest('[data-tp-id]');
@@ -149,17 +191,17 @@
             const root = item.closest('[data-tp-root]');
             tpValue(root).value = item.dataset.tpId;
             tpInput(root).value = item.dataset.tpLabel;
-            tpList(root).classList.add('hidden');
+            tpHide(root);
             return;
         }
-        document.querySelectorAll('[data-tp-root]').forEach((root) => {
-            if (!root.contains(e.target)) tpList(root).classList.add('hidden');
-        });
+
+        // Klik di luar picker: tutup semua daftar saran.
+        tpHideAll();
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.querySelectorAll('[data-tp-list]').forEach((list) => list.classList.add('hidden'));
+            tpHideAll();
         }
     });
 })();

@@ -13,6 +13,7 @@ use App\Models\ServiceClass;
 use App\Models\Tarif;
 use App\Models\TarifUnitMapping;
 use App\Models\User;
+use App\Http\Services\TarifUnitMappingService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -335,6 +336,8 @@ class TarifUnitMappingTest extends TestCase
         $response->assertOk();
         $response->assertSee('Buku Tarif: Ruang Mawar');
         $response->assertSee('KONS01');
+        $response->assertSee('Export Excel');
+        $response->assertSee('Export PDF');
     }
 
     public function test_create_page_locks_selected_unit(): void
@@ -616,6 +619,7 @@ class TarifUnitMappingTest extends TestCase
         $response->assertSee('KONS01');
         // Tidak ada jalan kembali ke daftar semua unit.
         $response->assertDontSee('Daftar Unit');
+        $response->assertSee('Export PDF');
     }
 
     public function test_sidebar_shows_direct_buku_tarif_menu_for_unit_user(): void
@@ -704,7 +708,8 @@ class TarifUnitMappingTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Tambah Baris');
-        $response->assertSee('Provider');
+        $response->assertSee('Kode Service');
+        $response->assertSee('Jenis Tarif');
         $response->assertSee('Kelas');
         $response->assertSee('Tarif (Rp)');
         $response->assertSee(route('buku-tarif-saya.search-tarifs'), false);
@@ -778,5 +783,117 @@ class TarifUnitMappingTest extends TestCase
         $this->actingAs($this->admin)
             ->getJson(route('buku-tarif-saya.search-tarifs', ['q' => 'kons']))
             ->assertForbidden();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export buku tarif unit
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_unit_export_xlsx_downloads_file_named_by_unit_code(): void
+    {
+        $this->makeMapping();
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('tarif-units.unit.export-xlsx', $this->unit));
+
+        $response->assertOk();
+        $disposition = $response->headers->get('content-disposition');
+
+        $this->assertStringContainsString('attachment', $disposition);
+        $this->assertStringContainsString('buku-tarif-RWM', $disposition);
+    }
+
+    public function test_unit_export_pdf_downloads_pdf_file(): void
+    {
+        $this->makeMapping(['notes' => 'Catatan PDF', 'status' => 'inactive']);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('tarif-units.unit.export-pdf', $this->unit));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', $response->headers->get('content-type'));
+        $this->assertStringContainsString('buku-tarif-RWM', $response->headers->get('content-disposition'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_unit_export_view_contains_rows_and_mapping_columns(): void
+    {
+        $this->makeMapping(['notes' => 'Catatan export', 'status' => 'inactive']);
+
+        $this->view('tarif-units.pdf', [
+            'unit' => $this->unit->load(['type', 'parent']),
+            'mappings' => $this->mappingService()->getUnitMappingsForExport($this->unit),
+            'filters' => [],
+        ])
+            ->assertSee('Buku Tarif: Ruang Mawar')
+            ->assertSee('Kode Service')
+            ->assertSee('Tarif (Rp)')
+            ->assertSee('Status')
+            ->assertSee('Catatan')
+            ->assertSee('KONS01')
+            ->assertSee('Konsultasi Dokter Umum')
+            ->assertSee('Catatan export')
+            ->assertSee('Non-Aktif');
+    }
+
+    public function test_unit_export_view_follows_active_filters(): void
+    {
+        $second = $this->makeTarif('KONS02', 'Konsultasi Dokter Spesialis', 'KLS1', 'Kelas 1');
+        $this->makeMapping(['notes' => 'Baris pertama']);
+        $this->makeMapping(['tarif_id' => $second->id, 'organization_unit_id' => $this->unit->id]);
+
+        $this->view('tarif-units.pdf', [
+            'unit' => $this->unit->load(['type', 'parent']),
+            'mappings' => $this->mappingService()->getUnitMappingsForExport($this->unit, ['search' => 'KONS02']),
+            'filters' => ['search' => 'KONS02'],
+        ])
+            ->assertSee('KONS02')
+            ->assertDontSee('KONS01');
+    }
+
+    public function test_unit_export_requires_permission(): void
+    {
+        $user = $this->makeUserWithoutPermission();
+
+        $this->actingAs($user)
+            ->get(route('tarif-units.unit.export-pdf', $this->unit))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('tarif-units.unit.export-xlsx', $this->unit))
+            ->assertForbidden();
+    }
+
+    public function test_my_unit_export_pdf_and_xlsx_use_own_unit(): void
+    {
+        $other = OrganizationUnit::create([
+            'name' => 'Ruang Melati',
+            'code' => 'RML',
+            'type_id' => OrganizationType::first()->id,
+            'is_active' => true,
+        ]);
+
+        $this->makeMapping(['notes' => 'Punya unit sendiri']);
+        $this->makeMapping(['organization_unit_id' => $other->id, 'notes' => 'Punya unit lain']);
+
+        $pdf = $this->actingAs($this->unitUser)->get(route('buku-tarif-saya.export-pdf'));
+        $pdf->assertOk();
+        $this->assertStringContainsString('application/pdf', $pdf->headers->get('content-type'));
+        $this->assertStringContainsString('buku-tarif-RWM', $pdf->headers->get('content-disposition'));
+
+        $xlsx = $this->actingAs($this->unitUser)->get(route('buku-tarif-saya.export-xlsx'));
+        $xlsx->assertOk();
+        $this->assertStringContainsString('buku-tarif-RWM', $xlsx->headers->get('content-disposition'));
+
+        // Data export terbatas pada unit pengguna.
+        $rows = $this->mappingService()->getUnitMappingsForExport($this->unit);
+        $this->assertSame(['Punya unit sendiri'], $rows->pluck('notes')->all());
+    }
+
+    protected function mappingService(): TarifUnitMappingService
+    {
+        return app(TarifUnitMappingService::class);
     }
 }

@@ -2,19 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TarifUnitMappingExport;
 use App\Http\Requests\TarifUnitMapping\Store;
 use App\Http\Requests\TarifUnitMapping\Update;
+use App\Http\Services\TarifUnitMappingExportService;
 use App\Http\Services\TarifUnitMappingService;
 use App\Models\OrganizationType;
 use App\Models\OrganizationUnit;
 use App\Models\TarifUnitMapping;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TarifUnitMappingController extends Controller
 {
-    public function __construct(protected TarifUnitMappingService $mappingService) {}
+    public function __construct(
+        protected TarifUnitMappingService $mappingService,
+        protected TarifUnitMappingExportService $exportService,
+    ) {}
 
     /*
     |--------------------------------------------------------------------------
@@ -46,6 +54,32 @@ class TarifUnitMappingController extends Controller
             ),
             'ownUnit' => false,
         ]);
+    }
+
+    /**
+     * Export buku tarif satu unit (XLSX) mengikuti filter aktif
+     * (search/status) di halaman unit.
+     */
+    public function exportUnitXlsx(Request $request, OrganizationUnit $organization_unit): BinaryFileResponse
+    {
+        $filters = $request->only(['search', 'status']);
+        $unit = $this->loadUnit($organization_unit);
+
+        return Excel::download(
+            new TarifUnitMappingExport($unit, $filters),
+            $this->exportService->filename($unit, $filters, 'xlsx')
+        );
+    }
+
+    /**
+     * Export buku tarif satu unit (PDF) mengikuti filter aktif.
+     */
+    public function exportUnitPdf(Request $request, OrganizationUnit $organization_unit): \Illuminate\Http\Response
+    {
+        $filters = $request->only(['search', 'status']);
+        $unit = $this->loadUnit($organization_unit);
+
+        return $this->pdfResponse($unit, $filters);
     }
 
     /**
@@ -126,8 +160,7 @@ class TarifUnitMappingController extends Controller
      * Endpoint AJAX untuk picker tarif (dipakai form input/edit).
      */
     public function searchTarifs(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $request->validate([
+    {        $request->validate([
             'q' => 'nullable|string|max:100',
             'id' => 'nullable|integer',
         ]);
@@ -165,6 +198,31 @@ class TarifUnitMappingController extends Controller
             ),
             'ownUnit' => true,
         ]);
+    }
+
+    /**
+     * Export buku tarif unit sendiri (XLSX).
+     */
+    public function exportMyUnitXlsx(Request $request): BinaryFileResponse
+    {
+        $filters = $request->only(['search', 'status']);
+        $unit = $this->loadUnit($this->currentUnit());
+
+        return Excel::download(
+            new TarifUnitMappingExport($unit, $filters),
+            $this->exportService->filename($unit, $filters, 'xlsx')
+        );
+    }
+
+    /**
+     * Export buku tarif unit sendiri (PDF).
+     */
+    public function exportMyUnitPdf(Request $request): \Illuminate\Http\Response
+    {
+        $filters = $request->only(['search', 'status']);
+        $unit = $this->loadUnit($this->currentUnit());
+
+        return $this->pdfResponse($unit, $filters);
     }
 
     /**
@@ -243,6 +301,25 @@ class TarifUnitMappingController extends Controller
     protected function loadUnit(OrganizationUnit $unit): OrganizationUnit
     {
         return $unit->load(['type', 'parent']);
+    }
+
+    /**
+     * Buku tarif satu unit sebagai PDF (A4 landscape), memakai filter aktif
+     * yang sama dengan halaman unit.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    protected function pdfResponse(OrganizationUnit $unit, array $filters = []): \Illuminate\Http\Response
+    {
+        return Pdf::loadView('tarif-units.pdf', [
+            'unit' => $unit,
+            'mappings' => $this->mappingService->getUnitMappingsForExport($unit, $filters),
+            'filters' => $filters,
+        ])
+            ->setPaper('a4', 'landscape')
+            // Nomor halaman di view memakai blok <script type="text/php">.
+            ->setOption('isPhpEnabled', true)
+            ->download($this->exportService->filename($unit, $filters, 'pdf'));
     }
 
     /**

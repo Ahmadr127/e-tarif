@@ -21,7 +21,9 @@
                 placeholder="Ketik min. 2 huruf — kode service / keterangan / kelas…"
                 class="{{ $inputClass }}"
             >
-            <div data-bt-list class="hidden absolute z-20 mt-1 w-full max-h-64 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg"></div>
+            {{-- Daftar saran diposisikan fixed oleh JS: kalau absolute, ia
+                 terpotong pembungkus tabel yang bisa di-scroll. --}}
+            <div data-bt-list class="hidden fixed z-50 max-h-64 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg"></div>
         </div>
         @if($error)
             <p class="mt-1 text-xs text-red-500">{{ $error }}</p>
@@ -30,12 +32,9 @@
             {{ $tarifId ? 'Memuat informasi tarif…' : 'Pilih tarif untuk melihat informasinya.' }}
         </p>
     </td>
-    <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-700" data-bt-info="provider_code">-</td>
-    <td class="px-4 py-3 min-w-[14rem]">
-        <div class="text-xs font-mono text-gray-500" data-bt-info="service_code">-</div>
-        <div class="text-sm text-gray-900" data-bt-info="service_name">-</div>
-        <div class="text-xs text-gray-400" data-bt-info="jenis_name">-</div>
-    </td>
+    <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-700" data-bt-info="service_code">-</td>
+    <td class="px-4 py-3 min-w-[14rem] text-sm text-gray-900" data-bt-info="service_name">-</td>
+    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600" data-bt-info="jenis_name">-</td>
     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" data-bt-info="class_name">-</td>
     <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900" data-bt-info="tariff_label">-</td>
     <td class="px-4 py-3 whitespace-nowrap">

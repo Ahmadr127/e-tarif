@@ -43,9 +43,13 @@ class TarifUnitMappingService
     }
 
     /**
-     * Daftar tarif yang sudah masuk buku tarif satu unit organisasi.
+     * Query dasar daftar tarif satu unit organisasi (dipakai halaman unit
+     * sekaligus export, agar filter search/status konsisten).
+     *
+     * @param  array<string, mixed>  $filters
+     * @return \Illuminate\Database\Eloquent\Builder<TarifUnitMapping>
      */
-    public function getUnitMappings(OrganizationUnit $unit, array $filters = [])
+    public function unitMappingsQuery(OrganizationUnit $unit, array $filters = [])
     {
         $query = TarifUnitMapping::query()
             ->with(['tarif.jenisTarif', 'tarif.provider', 'tarif.service', 'tarif.serviceClass'])
@@ -66,7 +70,31 @@ class TarifUnitMappingService
             $query->where('status', $filters['status']);
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($this->perPage($filters))->withQueryString();
+        return $query;
+    }
+
+    /**
+     * Daftar tarif yang sudah masuk buku tarif satu unit organisasi.
+     */
+    public function getUnitMappings(OrganizationUnit $unit, array $filters = [])
+    {
+        return $this->unitMappingsQuery($unit, $filters)
+            ->orderBy('created_at', 'desc')
+            ->paginate($this->perPage($filters))
+            ->withQueryString();
+    }
+
+    /**
+     * Data buku tarif satu unit untuk export (tanpa pagination).
+     *
+     * @param  array<string, mixed>  $filters
+     * @return \Illuminate\Database\Eloquent\Collection<int, TarifUnitMapping>
+     */
+    public function getUnitMappingsForExport(OrganizationUnit $unit, array $filters = [])
+    {
+        return $this->unitMappingsQuery($unit, $filters)
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     /**

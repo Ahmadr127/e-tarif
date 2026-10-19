@@ -3,7 +3,12 @@
 @section('title', 'Buku Tarif - '.$unit->name)
 
 @section('content')
-@php $ownUnit = $ownUnit ?? false; @endphp
+@php
+    $ownUnit = $ownUnit ?? false;
+    // Export mengikuti filter aktif (search/status) di halaman ini.
+    $exportBase = $ownUnit ? 'buku-tarif-saya.export' : 'tarif-units.unit.export';
+    $exportParams = $ownUnit ? request()->query() : (['organization_unit' => $unit->id] + request()->query());
+@endphp
 <div class="w-full mx-auto">
     <x-card padding="false">
         <x-slot name="title">Buku Tarif: {{ $unit->name }}</x-slot>
@@ -18,6 +23,12 @@
                     <i class="bi bi-plus-lg"></i> Input Buku Tarif
                 </a>
             @endif
+            <a href="{{ route($exportBase.'-xlsx', $exportParams) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
+            </a>
+            <a href="{{ route($exportBase.'-pdf', $exportParams) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
+                <i class="bi bi-file-earmark-pdf"></i> Export PDF
+            </a>
             @unless($ownUnit)
                 <a href="{{ route('tarif-units.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
                     <i class="bi bi-arrow-left"></i> Daftar Unit

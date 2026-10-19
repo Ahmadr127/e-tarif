@@ -32,8 +32,9 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Tarif</th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Provider</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Kode Service</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Service</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Jenis Tarif</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Kelas</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Tarif (Rp)</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
@@ -72,6 +73,44 @@
     const valueOf = (row) => row.querySelector('[data-bt-value]');
     const hintOf = (row) => row.querySelector('[data-bt-hint]');
 
+    let btOpenRow = null;
+
+    // Daftar saran diposisikan fixed mengikuti input, supaya tidak terpotong
+    // pembungkus tabel yang di-scroll dan tidak tertimpa baris di bawahnya.
+    function placeList(row) {
+        const list = listOf(row);
+        const rect = inputOf(row).getBoundingClientRect();
+
+        list.style.top = (rect.bottom + 4) + 'px';
+        list.style.left = rect.left + 'px';
+        list.style.width = rect.width + 'px';
+    }
+
+    function showList(row) {
+        btOpenRow = row;
+        placeList(row);
+        listOf(row).classList.remove('hidden');
+    }
+
+    function hideList(row) {
+        listOf(row).classList.add('hidden');
+        if (btOpenRow === row) btOpenRow = null;
+    }
+
+    function hideAllLists() {
+        btBody.querySelectorAll('[data-bt-list]').forEach((list) => list.classList.add('hidden'));
+        btOpenRow = null;
+    }
+
+    function repositionList() {
+        if (! btOpenRow) return;
+        if (! btOpenRow.isConnected) {
+            btOpenRow = null;
+            return;
+        }
+        placeList(btOpenRow);
+    }
+
     // Index baru selalu di atas index yang sudah ada di DOM (dipakai saat
     // menambah baris, termasuk setelah validasi gagal).
     rows().forEach((row) => {
@@ -89,7 +128,7 @@
         div.className = 'px-3 py-2 text-sm ' + (cls || 'text-gray-500');
         div.textContent = text;
         list.appendChild(div);
-        list.classList.remove('hidden');
+        showList(row);
     }
 
     function render(row, items) {
@@ -109,7 +148,8 @@
             btn._btItem = item;
             list.appendChild(btn);
         });
-        list.classList.remove('hidden');
+
+        showList(row);
     }
 
     function fillInfo(row, item) {
@@ -194,14 +234,12 @@
             valueOf(row).value = option.dataset.btId;
             inputOf(row).value = option.textContent;
             fillInfo(row, option._btItem || {});
-            listOf(row).classList.add('hidden');
+            hideList(row);
             return;
         }
 
         // Klik di luar picker: tutup semua daftar saran.
-        rows().forEach((row) => {
-            if (! row.contains(e.target)) listOf(row).classList.add('hidden');
-        });
+        hideAllLists();
     });
 
     btRoot.addEventListener('input', (e) => {
@@ -216,16 +254,20 @@
 
         const q = input.value.trim();
         if (q.length < 2) {
-            listOf(row).classList.add('hidden');
+            hideList(row);
             return;
         }
 
         row._btTimer = setTimeout(() => search(row, q), 300);
     });
 
+    // Daftar saran ikut bergerak saat halaman/tabel di-scroll atau di-resize.
+    window.addEventListener('scroll', repositionList, true);
+    window.addEventListener('resize', repositionList);
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            rows().forEach((row) => listOf(row).classList.add('hidden'));
+            hideAllLists();
         }
     });
 

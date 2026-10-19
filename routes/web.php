@@ -107,6 +107,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:manage_my_tarif_unit')->group(function () {
         Route::get('buku-tarif-saya/search-tarifs', [TarifUnitMappingController::class, 'searchTarifs'])
             ->name('buku-tarif-saya.search-tarifs');
+        Route::get('buku-tarif-saya/export-xlsx', [TarifUnitMappingController::class, 'exportMyUnitXlsx'])
+            ->name('buku-tarif-saya.export-xlsx');
+        Route::get('buku-tarif-saya/export-pdf', [TarifUnitMappingController::class, 'exportMyUnitPdf'])
+            ->name('buku-tarif-saya.export-pdf');
         Route::get('buku-tarif-saya', [TarifUnitMappingController::class, 'myUnit'])
             ->name('buku-tarif-saya.index');
         Route::get('buku-tarif-saya/input', [TarifUnitMappingController::class, 'myCreate'])
@@ -128,6 +132,10 @@ Route::middleware('auth')->group(function () {
             ->name('tarif-units.search-tarifs');
         Route::get('tarif-units/unit/{organization_unit}', [TarifUnitMappingController::class, 'unit'])
             ->name('tarif-units.unit');
+        Route::get('tarif-units/unit/{organization_unit}/export-xlsx', [TarifUnitMappingController::class, 'exportUnitXlsx'])
+            ->name('tarif-units.unit.export-xlsx');
+        Route::get('tarif-units/unit/{organization_unit}/export-pdf', [TarifUnitMappingController::class, 'exportUnitPdf'])
+            ->name('tarif-units.unit.export-pdf');
         Route::resource('tarif-units', TarifUnitMappingController::class)->parameters(['tarif-units' => 'tarif_unit']);
     });
 
