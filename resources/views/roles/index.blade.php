@@ -55,10 +55,12 @@
     <x-card padding="false">
         <x-slot name="title">Kelola Permission</x-slot>
         <x-slot name="subtitle">Centang hak akses tiap role, lalu simpan sekali untuk semua role</x-slot>
-         <button type="button" @click="openCreate()"
+        <div class="flex justify-end">
+            <button type="button" @click="openCreate()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
                 <i class="bi bi-plus-lg"></i> Tambah Role
             </button>
+        </div>
         <form action="{{ route('roles.permissions.sync') }}" method="POST">
             @csrf
             @method('PUT')
