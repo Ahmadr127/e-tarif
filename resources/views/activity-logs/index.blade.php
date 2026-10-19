@@ -72,12 +72,8 @@
                     <div class="text-xs text-gray-500 mt-1">{{ $log->log_name }}</div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm">
-                    <div class="font-medium">{{ class_basename($log->subject_type) }} #{{ $log->subject_id }}</div>
-                    @if($log->subject)
-                        <div class="text-xs text-gray-500">{{ $log->subject->name ?? $log->subject->title ?? '-' }}</div>
-                    @else
-                        <div class="text-xs text-red-500">(data terhapus)</div>
-                    @endif
+                    <div class="font-medium">{{ $log->subject_type ? class_basename($log->subject_type) : '-' }} #{{ $log->subject_id ?? '-' }}</div>
+                    <div class="text-xs {{ $log->subjectIsResolvable() ? 'text-gray-500' : 'text-red-500' }}">{{ $log->subject_label }}</div>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{{ $log->description }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm">

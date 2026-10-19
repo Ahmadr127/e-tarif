@@ -10,7 +10,10 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ActivityLog::with(['causer', 'subject'])->latest('id');
+        // 'subject' sengaja tidak di-eager load: baris audit lama bisa menunjuk
+        // model yang sudah dihapus (mis. Room) dan morph eager load akan
+        // melempar error. View memakai accessor ActivityLog::subject_label.
+        $query = ActivityLog::with('causer')->latest('id');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -54,7 +57,10 @@ class ActivityLogController extends Controller
 
     public function show(ActivityLog $activityLog)
     {
-        $activityLog->load(['causer', 'subject']);
+        // Sama seperti index: subject diakses lewat accessor yang aman,
+        // bukan eager load (bisa error untuk model yang sudah dihapus).
+        $activityLog->load('causer');
+
         return view('activity-logs.show', compact('activityLog'));
     }
 

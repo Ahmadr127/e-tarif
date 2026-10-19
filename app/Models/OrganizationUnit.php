@@ -104,7 +104,9 @@ class OrganizationUnit extends Model
      */
     public function ancestors(): Collection
     {
-        $ancestors = collect();
+        // newCollection() memastikan tipe Eloquent Collection (bukan
+        // Support\Collection dari collect()) sesuai deklarasi return.
+        $ancestors = $this->newCollection();
         $parent = $this->parent;
 
         while ($parent) {
