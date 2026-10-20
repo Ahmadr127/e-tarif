@@ -164,6 +164,28 @@ class ActivityLogPageTest extends TestCase
         $response->assertSee('Update profil user');
     }
 
+    public function test_index_renders_when_causer_model_no_longer_exists(): void
+    {
+        // MorphTo eager load mengiterasi semua causer_type yang ada. Satu tipe
+        // yang modelnya sudah dihapus dulu membuat seluruh halaman 500.
+        ActivityLog::create([
+            'log_name' => 'room',
+            'event' => 'deleted',
+            'description' => 'Hapus room dengan causer lama',
+            'subject_type' => User::class,
+            'subject_id' => $this->admin->id,
+            'causer_type' => 'App\\Models\\Room',
+            'causer_id' => 99,
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('activity-logs.index'));
+
+        $response->assertOk();
+        $response->assertSee('Hapus room dengan causer lama');
+        // Causer yang modelnya hilang ditampilkan sebagai System, bukan error.
+        $response->assertSee('System');
+    }
+
     public function test_index_can_filter_by_legacy_log_name(): void
     {
         $response = $this->actingAs($this->admin)

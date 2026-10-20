@@ -13,14 +13,14 @@ class ActivityLogController extends Controller
         // 'subject' sengaja tidak di-eager load: baris audit lama bisa menunjuk
         // model yang sudah dihapus (mis. Room) dan morph eager load akan
         // melempar error. View memakai accessor ActivityLog::subject_label.
-        $query = ActivityLog::with('causer')->latest('id');
+        $query = ActivityLog::latest('id');
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'ilike', "%{$search}%")
-                  ->orWhere('log_name', 'ilike', "%{$search}%")
-                  ->orWhere('event', 'ilike', "%{$search}%");
+                    ->orWhere('log_name', 'ilike', "%{$search}%")
+                    ->orWhere('event', 'ilike', "%{$search}%");
             });
         }
 
@@ -44,6 +44,15 @@ class ActivityLogController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
+        // 'causer' hanya di-eager load bila semua tipe causer pada hasil filter
+        // masih bisa di-resolve. MorphTo mengiterasi semua tipe yang ada, jadi
+        // satu tipe yang modelnya sudah dihapus cukup untuk menggagalkan eager
+        // load. Bila ada yang tidak resolvable, view mengakses causer secara
+        // guarded (lihat causerIsResolvable()).
+        if ($this->causerTypesResolvable($query)) {
+            $query->with('causer');
+        }
+
         $perPage = in_array((int) $request->input('per_page', 10), [5, 10, 25, 50, 100]) ? (int) $request->input('per_page', 10) : 10;
 
         $logs = $query->paginate($perPage)->withQueryString();
@@ -59,9 +68,29 @@ class ActivityLogController extends Controller
     {
         // Sama seperti index: subject diakses lewat accessor yang aman,
         // bukan eager load (bisa error untuk model yang sudah dihapus).
-        $activityLog->load('causer');
+        if (ActivityLog::typeIsResolvable($activityLog->causer_type)) {
+            $activityLog->load('causer');
+        }
 
         return view('activity-logs.show', compact('activityLog'));
+    }
+
+    /**
+     * Semua causer_type pada hasil query harus bisa di-resolve sebelum morph
+     * causer di-eager load. Tipe kosong (causer null) diabaikan karena tidak
+     * perlu di-resolve.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ActivityLog>  $query
+     */
+    protected function causerTypesResolvable($query): bool
+    {
+        return (clone $query)
+            ->reorder()
+            ->select('causer_type')
+            ->distinct()
+            ->pluck('causer_type')
+            ->filter()
+            ->every(fn ($type) => ActivityLog::typeIsResolvable($type));
     }
 
     public function forSubject(Request $request, string $type, int $id)

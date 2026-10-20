@@ -17,7 +17,7 @@
             <div><span class="font-semibold">Event:</span> <span class="px-2 py-0.5 rounded-full text-xs font-bold {{ $activityLog->event==='updated' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800' }}">{{ strtoupper($activityLog->event) }}</span></div>
             <div><span class="font-semibold">Model:</span> {{ class_basename($activityLog->subject_type) }} #{{ $activityLog->subject_id }} ({{ $activityLog->log_name }})</div>
             <div><span class="font-semibold">Deskripsi:</span> {{ $activityLog->description }}</div>
-            <div><span class="font-semibold">By User:</span> {{ $activityLog->causer?->name ?? 'System' }} @if($activityLog->causer) <span class="text-gray-500">({{ $activityLog->causer->email }}) ID: {{ $activityLog->causer_id }}</span> @endif</div>
+            <div><span class="font-semibold">By User:</span> {{ $activityLog->causerIsResolvable() ? ($activityLog->causer?->name ?? 'System') : 'System' }} @if($activityLog->causerIsResolvable() && $activityLog->causer) <span class="text-gray-500">({{ $activityLog->causer->email }}) ID: {{ $activityLog->causer_id }}</span> @endif</div>
             <div><span class="font-semibold">IP / User Agent:</span> {{ $activityLog->ip_address ?? '-' }} <div class="text-xs text-gray-500 truncate">{{ $activityLog->user_agent }}</div></div>
         </div>
     </x-card>
@@ -91,7 +91,7 @@
     @elseif($activityLog->event === 'deleted')
         <x-card padding="false">
             <x-slot name="title">Snapshot Data Sebelum Dihapus (OLD)</x-slot>
-            <x-slot name="subtitle">Data lengkap saat sebelum dihapus oleh {{ $activityLog->causer?->name ?? 'System' }} pada {{ $activityLog->created_at->format('d/m/Y H:i:s') }}</x-slot>
+            <x-slot name="subtitle">Data lengkap saat sebelum dihapus oleh {{ $activityLog->causerIsResolvable() ? ($activityLog->causer?->name ?? 'System') : 'System' }} pada {{ $activityLog->created_at->format('d/m/Y H:i:s') }}</x-slot>
             <div class="p-4">
                 <pre class="text-xs bg-red-50 p-3 rounded border overflow-auto max-h-[500px]">{{ json_encode($old, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
             </div>

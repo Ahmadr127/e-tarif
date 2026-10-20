@@ -47,9 +47,35 @@ class ActivityLog extends Model
      */
     public function subjectIsResolvable(): bool
     {
-        return is_string($this->subject_type)
-            && $this->subject_type !== ''
-            && class_exists($this->subject_type);
+        return static::typeIsResolvable($this->subject_type);
+    }
+
+    /**
+     * Causer bisa ikut menunjuk model yang sudah dihapus (mis. kalau log lama
+     * memakai model causer selain User). Dipakai view sebelum akses relasi.
+     */
+    public function causerIsResolvable(): bool
+    {
+        return static::typeIsResolvable($this->causer_type);
+    }
+
+    /**
+     * class_exists() tidak selalu aman: kalau classmap Composer yang sudah
+     * di-optimize masih menunjuk file yang sudah dihapus, autoloader mencoba
+     * include file itu dan melempar ErrorException. Audit log historis tidak
+     * boleh membuat halaman 500 karena class yang tinggal namanya saja.
+     */
+    public static function typeIsResolvable(mixed $type): bool
+    {
+        if (! is_string($type) || $type === '') {
+            return false;
+        }
+
+        try {
+            return class_exists($type);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
@@ -84,6 +110,6 @@ class ActivityLog extends Model
     public function scopeForSubject($query, Model $subject)
     {
         return $query->where('subject_type', get_class($subject))
-                     ->where('subject_id', $subject->getKey());
+            ->where('subject_id', $subject->getKey());
     }
 }

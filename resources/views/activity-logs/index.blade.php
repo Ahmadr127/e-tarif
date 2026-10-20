@@ -77,7 +77,7 @@
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{{ $log->description }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm">
-                    @if($log->causer)
+                    @if($log->causerIsResolvable() && $log->causer)
                         <div class="font-medium">{{ $log->causer->name }}</div>
                         <div class="text-xs text-gray-500">{{ $log->causer->email ?? '' }}</div>
                     @else
