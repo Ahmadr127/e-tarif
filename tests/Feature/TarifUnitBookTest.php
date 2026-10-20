@@ -96,7 +96,8 @@ class TarifUnitBookTest extends TestCase
             ->get(route('tarif-units.unit', $this->noPrefixUnit));
 
         $response->assertOk();
-        $response->assertSee('Belum ada prefix aktif');
+        $response->assertSee('Prefix aktif:');
+        $response->assertSee('belum ada');
         $response->assertSee('Tidak ada tarif yang cocok');
     }
 

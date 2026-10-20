@@ -10,6 +10,7 @@
     $prefixUrl = $ownUnit ? route('buku-tarif-saya.prefixes.index') : route('tarif-units.prefixes.index', $unit);
     $backUrl = $ownUnit ? route('buku-tarif-saya.index') : route('tarif-units.index');
     $canManagePrefix = auth()->user()->hasPermission($ownUnit ? 'edit_my_tarif_unit' : 'edit_tarif_units');
+    $inactivePrefixCount = $prefixes->where('is_active', false)->count();
     $statusLabel = fn (string $status) => match ($status) {
         'ACTIVE' => 'Aktif',
         'UPCOMING' => 'Akan Berlaku',
@@ -24,6 +25,18 @@
             {{ $unit->code }}
             &bull; {{ $unit->type?->display_name ?: ($unit->type?->name ?? '-') }}
             @if($unit->parent) &bull; Induk: {{ $unit->parent->name }} @endif
+            &bull; Prefix aktif:
+            @if(!empty($activePrefixes))
+                <span class="font-mono font-semibold text-gray-700">{{ implode(', ', $activePrefixes) }}</span>
+                @if($inactivePrefixCount > 0)
+                    <span class="text-gray-400">(+{{ $inactivePrefixCount }} nonaktif)</span>
+                @endif
+            @else
+                <span class="font-medium text-amber-700">belum ada</span>
+                @if($canManagePrefix)
+                    <a href="{{ $prefixUrl }}" class="font-semibold text-sp-primary hover:underline">Tambah prefix</a>
+                @endif
+            @endif
         </x-slot>
         <x-slot name="actions">
             @if($canManagePrefix)
@@ -43,33 +56,6 @@
                 </a>
             @endunless
         </x-slot>
-
-        {{-- Prefix menentukan cakupan tarif; hierarki unit tidak mewariskan prefix. --}}
-        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/70">
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">Prefix aktif</span>
-                @forelse($activePrefixes as $prefix)
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono font-semibold rounded-full bg-blue-100 text-blue-800">
-                        <i class="bi bi-signpost-2"></i>{{ $prefix }}
-                    </span>
-                @empty
-                    <span class="text-xs text-gray-500 italic">Belum ada prefix aktif.</span>
-                @endforelse
-                @if($prefixes->where('is_active', false)->isNotEmpty())
-                    <span class="text-[11px] text-gray-500">
-                        (+{{ $prefixes->where('is_active', false)->count() }} nonaktif tidak dipakai)
-                    </span>
-                @endif
-            </div>
-            @if(empty($activePrefixes))
-                <p class="mt-2 text-xs text-amber-700">
-                    Buku tarif kosong sampai prefix aktif ditambahkan.
-                    @if($canManagePrefix)
-                        <a href="{{ $prefixUrl }}" class="font-semibold underline hover:no-underline">Tambah prefix sekarang</a>.
-                    @endif
-                </p>
-            @endif
-        </div>
 
         <div class="px-4 py-3 border-b border-gray-100 bg-white">
             <form method="GET" class="flex flex-col lg:flex-row gap-3 items-end">
@@ -102,20 +88,13 @@
             </form>
         </div>
 
-        <x-table :columns="['Service', 'Provider', 'Kelas', 'Tarif (Rp)', 'Periode Berlaku', 'Status', 'Aksi']" :pagination="$tarifs" :showNumber="true" :perPage="(int) request('per_page', 25)" :perPageOptions="[25, 50, 100]" :maxHeight="'70vh'" empty="Tidak ada tarif yang cocok dengan prefix aktif unit ini." class="border-0 rounded-none shadow-none">
+        <x-table :columns="['Kode Service', 'Keterangan', 'Jenis', 'Provider', 'Kelas', 'Tarif (Rp)', 'Periode Berlaku', 'Status', 'Aksi']" :pagination="$tarifs" :showNumber="true" :perPage="(int) request('per_page', 25)" :perPageOptions="[25, 50, 100]" :maxHeight="'70vh'" empty="Tidak ada tarif yang cocok dengan prefix aktif unit ini." class="border-0 rounded-none shadow-none">
             @foreach($tarifs as $tarif)
             <tr class="hover:bg-gray-50 transition-colors">
                 <td class="px-4 py-3 text-center text-gray-500">{{ ($tarifs->firstItem() ?? 1) + $loop->index }}</td>
-                <td class="px-4 py-3">
-                    <div class="text-sm font-medium text-gray-900 max-w-md">
-                        <span class="font-mono">{{ $tarif->service?->code ?? '-' }}</span>
-                        &mdash; {{ $tarif->service?->description ?: ($tarif->service?->name ?? '-') }}
-                    </div>
-                    <div class="mt-0.5 text-xs text-gray-500">
-                        {{ $tarif->jenisTarif?->name ?? '-' }}
-                        @if($tarif->helper) &bull; Helper: {{ $tarif->helper }} @endif
-                    </div>
-                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm font-mono font-medium text-gray-900">{{ $tarif->service?->code ?? '-' }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700 max-w-md">{{ $tarif->service?->description ?: ($tarif->service?->name ?? '-') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{{ $tarif->jenisTarif?->name ?? '-' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-mono">{{ $tarif->provider?->code ?? '-' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ $tarif->serviceClass?->name ?? '-' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">Rp {{ number_format((float) $tarif->tariff, 0, ',', '.') }}</td>
