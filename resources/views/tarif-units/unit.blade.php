@@ -5,11 +5,17 @@
 @section('content')
 @php
     $ownUnit = $ownUnit ?? false;
-    // Export mengikuti filter aktif (search/status) di halaman ini.
     $exportBase = $ownUnit ? 'buku-tarif-saya.export' : 'tarif-units.unit.export';
     $exportParams = $ownUnit ? request()->query() : (['organization_unit' => $unit->id] + request()->query());
-    $canEdit = auth()->user()->hasPermission($ownUnit ? 'edit_my_tarif_unit' : 'edit_tarif_units');
-    $canDelete = auth()->user()->hasPermission($ownUnit ? 'delete_my_tarif_unit' : 'delete_tarif_units');
+    $prefixUrl = $ownUnit ? route('buku-tarif-saya.prefixes.index') : route('tarif-units.prefixes.index', $unit);
+    $backUrl = $ownUnit ? route('buku-tarif-saya.index') : route('tarif-units.index');
+    $canManagePrefix = auth()->user()->hasPermission($ownUnit ? 'edit_my_tarif_unit' : 'edit_tarif_units');
+    $statusLabel = fn (string $status) => match ($status) {
+        'ACTIVE' => 'Aktif',
+        'UPCOMING' => 'Akan Berlaku',
+        'EXPIRED' => 'Kedaluwarsa',
+        default => $status,
+    };
 @endphp
 <div class="w-full mx-auto">
     <x-card padding="false">
@@ -20,9 +26,9 @@
             @if($unit->parent) &bull; Induk: {{ $unit->parent->name }} @endif
         </x-slot>
         <x-slot name="actions">
-            @if($unit->is_active)
-                <a href="{{ $ownUnit ? route('buku-tarif-saya.create') : route('tarif-units.create', ['unit_id' => $unit->id]) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
-                    <i class="bi bi-plus-lg"></i> Input Buku Tarif
+            @if($canManagePrefix)
+                <a href="{{ $prefixUrl }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
+                    <i class="bi bi-signpost-split"></i> Kelola Prefix
                 </a>
             @endif
             <a href="{{ route($exportBase.'-xlsx', $exportParams) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
@@ -32,11 +38,38 @@
                 <i class="bi bi-file-earmark-pdf"></i> Export PDF
             </a>
             @unless($ownUnit)
-                <a href="{{ route('tarif-units.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
+                <a href="{{ $backUrl }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
                     <i class="bi bi-arrow-left"></i> Daftar Unit
                 </a>
             @endunless
         </x-slot>
+
+        {{-- Prefix menentukan cakupan tarif; hierarki unit tidak mewariskan prefix. --}}
+        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/70">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">Prefix aktif</span>
+                @forelse($activePrefixes as $prefix)
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono font-semibold rounded-full bg-blue-100 text-blue-800">
+                        <i class="bi bi-signpost-2"></i>{{ $prefix }}
+                    </span>
+                @empty
+                    <span class="text-xs text-gray-500 italic">Belum ada prefix aktif.</span>
+                @endforelse
+                @if($prefixes->where('is_active', false)->isNotEmpty())
+                    <span class="text-[11px] text-gray-500">
+                        (+{{ $prefixes->where('is_active', false)->count() }} nonaktif tidak dipakai)
+                    </span>
+                @endif
+            </div>
+            @if(empty($activePrefixes))
+                <p class="mt-2 text-xs text-amber-700">
+                    Buku tarif kosong sampai prefix aktif ditambahkan.
+                    @if($canManagePrefix)
+                        <a href="{{ $prefixUrl }}" class="font-semibold underline hover:no-underline">Tambah prefix sekarang</a>.
+                    @endif
+                </p>
+            @endif
+        </div>
 
         <div class="px-4 py-3 border-b border-gray-100 bg-white">
             <form method="GET" class="flex flex-col lg:flex-row gap-3 items-end">
@@ -45,16 +78,17 @@
                     <div class="relative">
                         <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         <input type="text" id="search" name="search" value="{{ request('search') }}"
-                               placeholder="Cari kode/keterangan tarif atau catatan..."
+                               placeholder="Cari kode/keterangan service, provider, atau kelas..."
                                class="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-full bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
                     </div>
                 </div>
-                <div class="lg:w-40">
-                    <label for="status" class="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+                <div class="lg:w-48">
+                    <label for="status" class="block text-xs font-semibold text-gray-600 mb-1">Status Tarif</label>
                     <select id="status" name="status" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
                         <option value="">Semua</option>
-                        <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Aktif</option>
-                        <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Non-Aktif</option>
+                        <option value="ACTIVE" {{ request('status') === 'ACTIVE' ? 'selected' : '' }}>Aktif</option>
+                        <option value="UPCOMING" {{ request('status') === 'UPCOMING' ? 'selected' : '' }}>Akan Berlaku</option>
+                        <option value="EXPIRED" {{ request('status') === 'EXPIRED' ? 'selected' : '' }}>Kedaluwarsa</option>
                     </select>
                 </div>
                 <div class="flex items-center gap-2">
@@ -68,43 +102,39 @@
             </form>
         </div>
 
-        <x-table :columns="['Tarif', 'Provider', 'Kelas', 'Tarif (Rp)', 'Status', 'Catatan', 'Aksi']" :pagination="$mappings" :showNumber="true" :maxHeight="'70vh'" empty="Belum ada tarif di buku tarif unit ini." class="border-0 rounded-none shadow-none">
-            @foreach($mappings as $mapping)
+        <x-table :columns="['Service', 'Provider', 'Kelas', 'Tarif (Rp)', 'Periode Berlaku', 'Status', 'Aksi']" :pagination="$tarifs" :showNumber="true" :perPageOptions="[25, 50, 100]" :maxHeight="'70vh'" empty="Tidak ada tarif yang cocok dengan prefix aktif unit ini." class="border-0 rounded-none shadow-none">
+            @foreach($tarifs as $tarif)
             <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-3 text-center text-gray-500">{{ ($mappings->firstItem() ?? 1) + $loop->index }}</td>
+                <td class="px-4 py-3 text-center text-gray-500">{{ ($tarifs->firstItem() ?? 1) + $loop->index }}</td>
                 <td class="px-4 py-3">
-                    <div class="text-sm font-medium text-gray-900 max-w-md">{{ $mapping->tarif?->display_label ?? '-' }}</div>
-                    <div class="mt-0.5 text-xs text-gray-500">{{ $mapping->tarif?->jenisTarif?->name ?? '-' }}</div>
+                    <div class="text-sm font-medium text-gray-900 max-w-md">
+                        <span class="font-mono">{{ $tarif->service?->code ?? '-' }}</span>
+                        &mdash; {{ $tarif->service?->description ?: ($tarif->service?->name ?? '-') }}
+                    </div>
+                    <div class="mt-0.5 text-xs text-gray-500">
+                        {{ $tarif->jenisTarif?->name ?? '-' }}
+                        @if($tarif->helper) &bull; Helper: {{ $tarif->helper }} @endif
+                    </div>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-mono">{{ $mapping->tarif?->provider?->code ?? '-' }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ $mapping->tarif?->serviceClass?->name ?? '-' }}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">Rp {{ number_format((float) ($mapping->tarif?->tariff ?? 0), 0, ',', '.') }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    @if($mapping->status === 'active')
-                        <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Aktif</span>
-                    @else
-                        <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Non-Aktif</span>
-                    @endif
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-mono">{{ $tarif->provider?->code ?? '-' }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ $tarif->serviceClass?->name ?? '-' }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">Rp {{ number_format((float) $tarif->tariff, 0, ',', '.') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                    {{ $tarif->valid_date_from?->format('d/m/Y') ?? '-' }}
+                    <span class="text-gray-400">&rarr;</span>
+                    {{ $tarif->end_date_to?->format('d/m/Y') ?? '-' }}
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-600 max-w-xs">{{ $mapping->notes ? \Illuminate\Support\Str::limit($mapping->notes, 60) : '-' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                    <x-actions>
-                        @unless($ownUnit)
-                            <x-actions-item href="{{ route('tarif-units.show', $mapping) }}" icon="bi-eye" label="Detail" />
-                        @endunless
-                        @if($canEdit)
-                            <x-actions-item href="{{ $ownUnit ? route('buku-tarif-saya.edit', $mapping) : route('tarif-units.edit', $mapping) }}" icon="bi-pencil" label="Edit" />
-                        @endif
-                        @if($canDelete)
-                            <x-actions-form
-                                action="{{ $ownUnit ? route('buku-tarif-saya.destroy', $mapping) : route('tarif-units.destroy', $mapping) }}"
-                                method="DELETE"
-                                icon="bi-trash"
-                                label="Hapus"
-                                confirm="Yakin ingin menghapus tarif ini dari buku tarif unit?"
-                            />
-                        @endif
-                    </x-actions>
+                    <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ \App\Models\Tarif::badgeClass($tarif->status) }}">
+                        {{ $statusLabel($tarif->status) }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <a href="{{ $ownUnit ? route('buku-tarif-saya.tarif', $tarif) : route('tarif-units.unit.tarif', [$unit, $tarif]) }}"
+                       class="inline-flex items-center justify-center w-7 h-7 rounded-md text-sp-navy border border-gray-200 bg-white hover:bg-sp-primary/10 hover:border-sp-primary/30 hover:text-sp-primary transition-colors"
+                       title="Detail tarif">
+                        <i class="bi bi-eye"></i>
+                    </a>
                 </td>
             </tr>
             @endforeach

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrganizationUnit extends Model
 {
-    use HasFactory, Auditable;
+    use Auditable, HasFactory;
 
     protected $fillable = [
         'name',
@@ -20,7 +20,7 @@ class OrganizationUnit extends Model
         'parent_id',
         'head_id',
         'description',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [
@@ -88,13 +88,16 @@ class OrganizationUnit extends Model
     }
 
     /**
-     * Pemetaan tarif yang berlaku pada unit ini.
+     * Konfigurasi prefix kode service untuk buku tarif unit ini.
      *
-     * @return HasMany<TarifUnitMapping, $this>
+     * Cakupan tarif dihitung dari prefix aktif milik unit sendiri; hierarki
+     * organisasi tidak mewariskan prefix/tarif ke unit anak.
+     *
+     * @return HasMany<TarifUnitServicePrefix, $this>
      */
-    public function tarifMappings(): HasMany
+    public function servicePrefixes(): HasMany
     {
-        return $this->hasMany(TarifUnitMapping::class);
+        return $this->hasMany(TarifUnitServicePrefix::class);
     }
 
     /**
@@ -128,7 +131,7 @@ class OrganizationUnit extends Model
     /**
      * Scope for active units only
      *
-     * @param \Illuminate\Database\Eloquent\Builder<OrganizationUnit> $query
+     * @param  \Illuminate\Database\Eloquent\Builder<OrganizationUnit>  $query
      * @return \Illuminate\Database\Eloquent\Builder<OrganizationUnit>
      */
     public function scopeActive($query)
@@ -139,7 +142,7 @@ class OrganizationUnit extends Model
     /**
      * Scope for root units (no parent)
      *
-     * @param \Illuminate\Database\Eloquent\Builder<OrganizationUnit> $query
+     * @param  \Illuminate\Database\Eloquent\Builder<OrganizationUnit>  $query
      * @return \Illuminate\Database\Eloquent\Builder<OrganizationUnit>
      */
     public function scopeRoot($query)

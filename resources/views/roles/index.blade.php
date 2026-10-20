@@ -27,29 +27,6 @@
 @endphp
 <div class="space-y-5" x-data="roleModal({{ Js::from($roleDataMap) }})">
 
-    {{-- Stats --}}
-    {{-- <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <x-stats label="Total Role" :value="$totalRoles" icon="bi-shield-lock-fill" color="bg-blue-500" />
-        <x-stats label="Role Aktif" :value="$activeRoles" icon="bi-shield-check" color="bg-sp-primary" />
-        <x-stats label="Role Tidak Aktif" :value="$inactiveRoles" icon="bi-shield-x" color="bg-red-500" />
-    </div> --}}
-
-    {{-- ===================== DATA ROLE ===================== --}}
-    {{-- <x-card padding="false">
-        <x-slot name="title">Data Role</x-slot>
-        <x-slot name="subtitle">Daftar role dalam sistem</x-slot>
-        <x-slot name="actions">
-            <form method="GET" class="relative">
-                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari role..."
-                    class="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-full bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary outline-none transition-colors w-44">
-            </form>
-            <button type="button" @click="openCreate()"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
-                <i class="bi bi-plus-lg"></i> Tambah Role
-            </button>
-        </x-slot>
-    </x-card> --}}
 
     {{-- ===================== MATRIKS PERMISSION ===================== --}}
     <x-card padding="false">

@@ -292,6 +292,198 @@ class ImportSimutuUsersTest extends TestCase
         }
     }
 
+    public function test_flag_prune_menghapus_user_yang_tidak_ada_di_json(): void
+    {
+        $this->createLegacyUser('user.lama');
+        $this->createLegacyUser('admin');
+        $this->createLegacyUser('user');
+        $this->createLegacyUser('budi.ns3', 'Budi Lama');
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune' => true,
+            '--update-existing' => true,
+        ])
+            ->expectsOutputToContain('User dihapus (tidak ada di JSON)')
+            ->assertExitCode(0);
+
+        // User yang unitnya sudah dibuang dari JSON ikut terhapus.
+        $this->assertNull(User::where('username', 'user.lama')->first());
+
+        // User yang masih ada di JSON tetap ada (dan ikut diperbarui).
+        $this->assertSame('Budi Perawat', User::where('username', 'budi.ns3')->value('name'));
+
+        // Akun admin dan user dilindungi secara default.
+        $this->assertNotNull(User::where('username', 'admin')->first());
+        $this->assertNotNull(User::where('username', 'user')->first());
+
+        // User dari JSON yang belum ada tetap dibuat.
+        $this->assertNotNull(User::where('username', 'tanpa.unit')->first());
+    }
+
+    public function test_flag_keep_menambah_username_yang_dilindungi_prune(): void
+    {
+        $this->createLegacyUser('user.lama');
+        $this->createLegacyUser('user.lain');
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune' => true,
+            '--keep' => ['user.lama'],
+        ])->assertExitCode(0);
+
+        $this->assertNotNull(User::where('username', 'user.lama')->first());
+        $this->assertNull(User::where('username', 'user.lain')->first());
+    }
+
+    public function test_dry_run_dengan_prune_tidak_menghapus_user(): void
+    {
+        $this->createLegacyUser('user.lama');
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune' => true,
+            '--dry-run' => true,
+        ])
+            ->expectsOutputToContain('Akan dihapus: user.lama')
+            ->assertExitCode(0);
+
+        $this->assertNotNull(User::where('username', 'user.lama')->first());
+    }
+
+    public function test_tanpa_prune_user_ekstra_dibiarkan_dan_diberi_peringatan(): void
+    {
+        $this->createLegacyUser('user.lama');
+
+        $this->artisan('users:import-simutu', ['file' => $this->fixturePath])
+            ->expectsOutputToContain('pakai --prune untuk menghapus')
+            ->assertExitCode(0);
+
+        $this->assertNotNull(User::where('username', 'user.lama')->first());
+    }
+
+    public function test_flag_prune_units_menghapus_unit_kosong_yang_tidak_ada_di_json(): void
+    {
+        $lama = OrganizationUnit::create([
+            'name' => 'Unit Lama',
+            'code' => 'UNIT999',
+            'type_id' => OrganizationType::where('name', 'unit')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune-units' => true,
+        ])
+            ->expectsOutputToContain('Unit dihapus (tidak ada di JSON)')
+            ->assertExitCode(0);
+
+        $this->assertNull(OrganizationUnit::find($lama->id));
+
+        // Unit yang dipakai JSON tetap ada: "IT" (hasil pencocokan nama) dan "NS 3" (baru).
+        $this->assertNotNull(OrganizationUnit::where('code', 'IT')->first());
+        $this->assertNotNull(OrganizationUnit::where('name', 'NS 3')->first());
+    }
+
+    public function test_prune_units_melewati_unit_yang_masih_punya_user(): void
+    {
+        $unit = OrganizationUnit::create([
+            'name' => 'Unit Terpakai',
+            'code' => 'UNIT998',
+            'type_id' => OrganizationType::where('name', 'unit')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $this->createLegacyUser('user.lama');
+        DB::table('users')->where('username', 'user.lama')->update(['organization_unit_id' => $unit->id]);
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune-units' => true,
+        ])
+            ->expectsOutputToContain('masih terhubung')
+            ->assertExitCode(0);
+
+        $this->assertNotNull(OrganizationUnit::find($unit->id));
+    }
+
+    public function test_prune_units_melewati_unit_yang_punya_sub_unit(): void
+    {
+        $induk = OrganizationUnit::create([
+            'name' => 'Unit Induk',
+            'code' => 'UNIT997',
+            'type_id' => OrganizationType::where('name', 'department')->value('id'),
+            'is_active' => true,
+        ]);
+        OrganizationUnit::create([
+            'name' => 'Anak Unit Induk',
+            'code' => 'UNIT996',
+            'type_id' => OrganizationType::where('name', 'unit')->value('id'),
+            'parent_id' => $induk->id,
+            'is_active' => true,
+        ]);
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune-units' => true,
+        ])
+            ->expectsOutputToContain('sub-unit masih menempel')
+            ->assertExitCode(0);
+
+        // Induk dilewati, anaknya yang kosong tetap dihapus.
+        $this->assertNotNull(OrganizationUnit::find($induk->id));
+        $this->assertNull(OrganizationUnit::where('code', 'UNIT996')->first());
+    }
+
+    public function test_flag_keep_unit_melindungi_unit_dari_prune_units(): void
+    {
+        $unit = OrganizationUnit::create([
+            'name' => 'Unit Dilindungi',
+            'code' => 'UNIT995',
+            'type_id' => OrganizationType::where('name', 'unit')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune-units' => true,
+            '--keep-unit' => ['UNIT995'],
+        ])->assertExitCode(0);
+
+        $this->assertNotNull(OrganizationUnit::find($unit->id));
+    }
+
+    public function test_dry_run_dengan_prune_units_tidak_menghapus_unit(): void
+    {
+        $unit = OrganizationUnit::create([
+            'name' => 'Unit Lama',
+            'code' => 'UNIT994',
+            'type_id' => OrganizationType::where('name', 'unit')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $this->artisan('users:import-simutu', [
+            'file' => $this->fixturePath,
+            '--prune-units' => true,
+            '--dry-run' => true,
+        ])
+            ->expectsOutputToContain('Unit akan dihapus: UNIT994')
+            ->assertExitCode(0);
+
+        $this->assertNotNull(OrganizationUnit::find($unit->id));
+    }
+
+    protected function createLegacyUser(string $username, string $name = 'User Lama'): User
+    {
+        return User::create([
+            'name' => $name,
+            'username' => $username,
+            'email' => $username.'@rsazra.co.id',
+            'password' => 'lama',
+            'role_id' => Role::where('name', 'user')->value('id'),
+        ]);
+    }
+
     public function test_file_json_tidak_ada_mengembalikan_gagal(): void
     {
         $this->artisan('users:import-simutu', ['file' => 'tidak/ada.json'])

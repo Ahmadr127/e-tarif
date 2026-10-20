@@ -14,7 +14,8 @@ use App\Http\Controllers\ServiceClassController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\TarifController;
 use App\Http\Controllers\TarifImportController;
-use App\Http\Controllers\TarifUnitMappingController;
+use App\Http\Controllers\TarifUnitBookController;
+use App\Http\Controllers\TarifUnitServicePrefixController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -107,46 +108,67 @@ Route::middleware('auth')->group(function () {
     // Buku Tarif unit sendiri (role operator unit): unit diambil dari profil
     // pengguna, jadi namanya dibedakan agar tidak bentrok dengan pola menu admin.
     Route::middleware('permission:manage_my_tarif_unit')->group(function () {
-        Route::get('buku-tarif-saya/search-tarifs', [TarifUnitMappingController::class, 'searchTarifs'])
-            ->name('buku-tarif-saya.search-tarifs');
-        Route::get('buku-tarif-saya/export-xlsx', [TarifUnitMappingController::class, 'exportMyUnitXlsx'])
-            ->name('buku-tarif-saya.export-xlsx');
-        Route::get('buku-tarif-saya/export-pdf', [TarifUnitMappingController::class, 'exportMyUnitPdf'])
-            ->name('buku-tarif-saya.export-pdf');
-        Route::get('buku-tarif-saya', [TarifUnitMappingController::class, 'myUnit'])
+        Route::get('buku-tarif-saya', [TarifUnitBookController::class, 'myUnit'])
             ->name('buku-tarif-saya.index');
-        Route::get('buku-tarif-saya/input', [TarifUnitMappingController::class, 'myCreate'])
-            ->name('buku-tarif-saya.create');
-        Route::post('buku-tarif-saya', [TarifUnitMappingController::class, 'myStore'])
-            ->name('buku-tarif-saya.store');
-        // Ubah & hapus punya permission tersendiri, terpisah dari izin input.
-        Route::get('buku-tarif-saya/{tarif_unit}/edit', [TarifUnitMappingController::class, 'myEdit'])
+        Route::get('buku-tarif-saya/export-xlsx', [TarifUnitBookController::class, 'exportMyUnitXlsx'])
+            ->name('buku-tarif-saya.export-xlsx');
+        Route::get('buku-tarif-saya/export-pdf', [TarifUnitBookController::class, 'exportMyUnitPdf'])
+            ->name('buku-tarif-saya.export-pdf');
+        Route::get('buku-tarif-saya/tarif/{tarif}', [TarifUnitBookController::class, 'myShow'])
+            ->name('buku-tarif-saya.tarif');
+
+        // Konfigurasi prefix: lihat dengan izin kelola, ubah/hapus dengan
+        // izin terpisah (kontrak permission lama dipertahankan).
+        Route::get('buku-tarif-saya/prefixes', [TarifUnitServicePrefixController::class, 'myIndex'])
+            ->name('buku-tarif-saya.prefixes.index');
+        Route::get('buku-tarif-saya/prefixes/create', [TarifUnitServicePrefixController::class, 'myCreate'])
             ->middleware('permission:edit_my_tarif_unit')
-            ->name('buku-tarif-saya.edit');
-        Route::put('buku-tarif-saya/{tarif_unit}', [TarifUnitMappingController::class, 'myUpdate'])
+            ->name('buku-tarif-saya.prefixes.create');
+        Route::post('buku-tarif-saya/prefixes', [TarifUnitServicePrefixController::class, 'myStore'])
             ->middleware('permission:edit_my_tarif_unit')
-            ->name('buku-tarif-saya.update');
-        Route::delete('buku-tarif-saya/{tarif_unit}', [TarifUnitMappingController::class, 'myDestroy'])
+            ->name('buku-tarif-saya.prefixes.store');
+        Route::get('buku-tarif-saya/prefixes/{prefix}/edit', [TarifUnitServicePrefixController::class, 'myEdit'])
+            ->middleware('permission:edit_my_tarif_unit')
+            ->name('buku-tarif-saya.prefixes.edit');
+        Route::put('buku-tarif-saya/prefixes/{prefix}', [TarifUnitServicePrefixController::class, 'myUpdate'])
+            ->middleware('permission:edit_my_tarif_unit')
+            ->name('buku-tarif-saya.prefixes.update');
+        Route::delete('buku-tarif-saya/prefixes/{prefix}', [TarifUnitServicePrefixController::class, 'myDestroy'])
             ->middleware('permission:delete_my_tarif_unit')
-            ->name('buku-tarif-saya.destroy');
+            ->name('buku-tarif-saya.prefixes.destroy');
     });
 
-    // Buku Tarif routes (pemetaan tarif ke unit organisasi)
+    // Buku Tarif admin: daftar unit + tarif dinamis dari prefix service.
     Route::middleware('permission:manage_tarif_units')->group(function () {
-        // Rute kustom didaftarkan lebih dulu agar tidak tertangkap {tarif_unit}.
-        Route::get('tarif-units/search-tarifs', [TarifUnitMappingController::class, 'searchTarifs'])
-            ->name('tarif-units.search-tarifs');
-        Route::get('tarif-units/unit/{organization_unit}', [TarifUnitMappingController::class, 'unit'])
+        Route::get('tarif-units', [TarifUnitBookController::class, 'index'])
+            ->name('tarif-units.index');
+        Route::get('tarif-units/unit/{organization_unit}', [TarifUnitBookController::class, 'unit'])
             ->name('tarif-units.unit');
-        Route::get('tarif-units/unit/{organization_unit}/export-xlsx', [TarifUnitMappingController::class, 'exportUnitXlsx'])
+        Route::get('tarif-units/unit/{organization_unit}/export-xlsx', [TarifUnitBookController::class, 'exportUnitXlsx'])
             ->name('tarif-units.unit.export-xlsx');
-        Route::get('tarif-units/unit/{organization_unit}/export-pdf', [TarifUnitMappingController::class, 'exportUnitPdf'])
+        Route::get('tarif-units/unit/{organization_unit}/export-pdf', [TarifUnitBookController::class, 'exportUnitPdf'])
             ->name('tarif-units.unit.export-pdf');
-        // Edit/update dan hapus dipisah per permission.
-        Route::resource('tarif-units', TarifUnitMappingController::class)
-            ->parameters(['tarif-units' => 'tarif_unit'])
-            ->middlewareFor(['edit', 'update'], 'permission:edit_tarif_units')
-            ->middlewareFor('destroy', 'permission:delete_tarif_units');
+        Route::get('tarif-units/unit/{organization_unit}/tarif/{tarif}', [TarifUnitBookController::class, 'show'])
+            ->name('tarif-units.unit.tarif');
+
+        // Konfigurasi prefix per unit.
+        Route::get('tarif-units/unit/{organization_unit}/prefixes', [TarifUnitServicePrefixController::class, 'index'])
+            ->name('tarif-units.prefixes.index');
+        Route::get('tarif-units/unit/{organization_unit}/prefixes/create', [TarifUnitServicePrefixController::class, 'create'])
+            ->middleware('permission:edit_tarif_units')
+            ->name('tarif-units.prefixes.create');
+        Route::post('tarif-units/unit/{organization_unit}/prefixes', [TarifUnitServicePrefixController::class, 'store'])
+            ->middleware('permission:edit_tarif_units')
+            ->name('tarif-units.prefixes.store');
+        Route::get('tarif-units/unit/{organization_unit}/prefixes/{prefix}/edit', [TarifUnitServicePrefixController::class, 'edit'])
+            ->middleware('permission:edit_tarif_units')
+            ->name('tarif-units.prefixes.edit');
+        Route::put('tarif-units/unit/{organization_unit}/prefixes/{prefix}', [TarifUnitServicePrefixController::class, 'update'])
+            ->middleware('permission:edit_tarif_units')
+            ->name('tarif-units.prefixes.update');
+        Route::delete('tarif-units/unit/{organization_unit}/prefixes/{prefix}', [TarifUnitServicePrefixController::class, 'destroy'])
+            ->middleware('permission:delete_tarif_units')
+            ->name('tarif-units.prefixes.destroy');
     });
 
     // Tarif Management routes

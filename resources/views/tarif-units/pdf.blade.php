@@ -23,9 +23,11 @@
         &bull; {{ $unit->type?->display_name ?: ($unit->type?->name ?? '-') }}
         @if($unit->parent) &bull; Induk: {{ $unit->parent->name }} @endif
         <br>
-        {{ $mappings->count() }} tarif
+        Prefix aktif:
+        {{ !empty($prefixes) ? implode(', ', $prefixes) : '-' }}
+        &bull; {{ $tarifs->count() }} tarif
         @if(!empty($filters['search'])) &bull; pencarian: "{{ $filters['search'] }}" @endif
-        @if(!empty($filters['status'])) &bull; status: {{ $filters['status'] === 'active' ? 'Aktif' : 'Non-Aktif' }} @endif
+        @if(!empty($filters['status'])) &bull; status: {{ $filters['status'] }} @endif
         &bull; dicetak {{ now()->format('d/m/Y H:i') }}
     </div>
 
@@ -35,26 +37,28 @@
                 <th style="width: 24px;">No</th>
                 <th style="width: 70px;">Kode Service</th>
                 <th>Keterangan</th>
-                <th style="width: 70px;">Kelas</th>
+                <th style="width: 60px;">Kelas</th>
+                <th style="width: 55px;">Provider</th>
+                <th style="width: 110px;">Periode</th>
                 <th style="width: 78px;">Tarif (Rp)</th>
                 <th style="width: 52px;">Status</th>
-                <th style="width: 130px;">Catatan</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($mappings as $index => $mapping)
+            @forelse($tarifs as $index => $tarif)
                 <tr>
                     <td class="center">{{ $index + 1 }}</td>
-                    <td>{{ $mapping->tarif?->service?->code ?? '-' }}</td>
-                    <td>{{ $mapping->tarif?->service?->description ?: ($mapping->tarif?->service?->name ?? '-') }}</td>
-                    <td>{{ $mapping->tarif?->serviceClass?->name ?? '-' }}</td>
-                    <td class="num">{{ number_format((float) ($mapping->tarif?->tariff ?? 0), 0, ',', '.') }}</td>
-                    <td>{{ $mapping->status === 'active' ? 'Aktif' : 'Non-Aktif' }}</td>
-                    <td>{{ $mapping->notes ?? '-' }}</td>
+                    <td>{{ $tarif->service?->code ?? '-' }}</td>
+                    <td>{{ $tarif->service?->description ?: ($tarif->service?->name ?? '-') }}</td>
+                    <td>{{ $tarif->serviceClass?->name ?? '-' }}</td>
+                    <td>{{ $tarif->provider?->code ?? '-' }}</td>
+                    <td>{{ $tarif->valid_date_from?->format('d/m/Y') ?? '-' }} &rarr; {{ $tarif->end_date_to?->format('d/m/Y') ?? '-' }}</td>
+                    <td class="num">{{ number_format((float) $tarif->tariff, 0, ',', '.') }}</td>
+                    <td>{{ $tarif->status }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td class="empty" colspan="7">Belum ada tarif di buku tarif unit ini.</td>
+                    <td class="empty" colspan="8">Tidak ada tarif yang cocok dengan prefix aktif unit ini.</td>
                 </tr>
             @endforelse
         </tbody>

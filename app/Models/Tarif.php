@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 class Tarif extends Model
@@ -67,13 +66,45 @@ class Tarif extends Model
     }
 
     /**
-     * Pemetaan tarif ini ke unit organisasi.
+     * Batasi query ke tarif yang kode service-nya cocok dengan salah satu
+     * prefix aktif (pencocokan dari AWAL kode, bukan substring).
      *
-     * @return HasMany<TarifUnitMapping, $this>
+     * Prefix dinormalisasi + di-escape; tanpa prefix hasilnya kosong
+     * (bukan seluruh tarif). Subquery memakai index `services_code_upper`
+     * pada PostgreSQL: UPPER(TRIM(code)).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Tarif>  $query
+     * @param  array<int, string>  $prefixes
+     * @return \Illuminate\Database\Eloquent\Builder<Tarif>
      */
-    public function unitMappings(): HasMany
+    public function scopeForServicePrefixes($query, array $prefixes)
     {
-        return $this->hasMany(TarifUnitMapping::class);
+        $normalized = [];
+        foreach ($prefixes as $prefix) {
+            $value = TarifUnitServicePrefix::normalize($prefix);
+            if ($value !== '') {
+                $normalized[$value] = true;
+            }
+        }
+        $normalized = array_keys($normalized);
+
+        if ($normalized === []) {
+            // Jangan pernah menghilangkan kondisi: unit tanpa prefix = kosong.
+            return $query->whereRaw('1 = 0');
+        }
+
+        $serviceIds = Service::query()
+            ->select('id')
+            ->where(function ($sub) use ($normalized) {
+                foreach ($normalized as $prefix) {
+                    $sub->orWhereRaw(
+                        "UPPER(TRIM(code)) LIKE ? ESCAPE '\\'",
+                        [TarifUnitServicePrefix::escapeLike($prefix).'%']
+                    );
+                }
+            });
+
+        return $query->whereIn('service_id', $serviceIds);
     }
 
     /**
