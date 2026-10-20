@@ -37,7 +37,7 @@
                 </td>
                 <td class="px-4 py-3">
                     <div class="text-sm font-medium text-gray-900">{{ $tarif->service->name ?? '-' }}</div>
-                    <div class="text-xs text-gray-500 max-w-xs truncate">{{ $tarif->service->description ?? '-' }}</div>
+                    {{-- <div class="text-xs text-gray-500 max-w-xs truncate">{{ $tarif->service->description ?? '-' }}</div> --}}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                     <div class="text-sm text-gray-900">{{ $tarif->provider->code ?? '-' }}</div>
