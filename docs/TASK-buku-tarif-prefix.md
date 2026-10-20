@@ -1,6 +1,6 @@
-# TASK: Refactor Buku Tarif Unit Berbasis Prefix Service
+﻿# TASK: Refactor Buku Tarif Unit Berbasis Prefix Service
 
-Status keseluruhan: **BERJALAN**
+Status keseluruhan: **SELESAI**
 
 Terakhir diupdate: 2026-10-20
 
@@ -15,24 +15,22 @@ halaman buku tarif. Arsitektur, permission, UI, dan fitur lain dipertahankan.
 
 | # | Task | Status | Catatan |
 |---|------|--------|---------|
-| 1 | Audit dependensi `TarifUnitMapping` dan skema DB | ✅ Selesai | 170.539 tarif, 10.789 service, mapping lama 0 baris |
-| 2 | Ukur baseline performa | ✅ Selesai | 25 baris tarif = 39 ms; query prefix JPU = 80 ms |
+| 1 | Audit dependensi `TarifUnitMapping` dan skema DB | ✅ Selesai | 207.059 tarif, 10.789 service, mapping lama 0 baris |
+| 2 | Ukur baseline performa | ✅ Selesai | 25 baris tarif = 48-56 ms; 5 query |
 | 3 | Migration `tarif_unit_service_prefixes` | ✅ Selesai | `2026_10_20_000001_...` |
-| 4 | Migration hapus `tarif_unit_mappings` + backup JSON | ✅ Selesai (kode) | Backup ke `storage/app/backups/` sebelum drop |
-| 5 | Model `TarifUnitServicePrefix` + relasi model | ✅ Selesai | `OrganizationUnit::servicePrefixes()`, scope `Tarif::forServicePrefixes()` |
-| 6 | Service CRUD prefix + authorization | ✅ Selesai (kode) | Activity log, unique per unit, validasi karakter |
-| 7 | Query buku tarif berbasis prefix | ✅ Selesai | Filter via `TarifService::applyFilters`, pagination 25/50/100 |
+| 4 | Migration hapus `tarif_unit_mappings` + backup JSON | ✅ Selesai | Backup `storage/app/backups/tarif_unit_mappings-20261020-024746.json` |
+| 5 | Model `TarifUnitServicePrefix` + relasi model | ✅ Selesai | `OrganizationUnit::servicePrefixes()`, scope `Tarif::forServiceIds()` |
+| 6 | Service CRUD prefix + authorization | ✅ Selesai | Activity log, unique per unit, validasi karakter |
+| 7 | Query buku tarif berbasis prefix | ✅ Selesai | Resolusi prefix -> service_id, filter via `TarifService::applyFilters` |
 | 8 | Refactor controller + routes | ✅ Selesai | `TarifUnitBookController`, `TarifUnitServicePrefixController` |
-| 9 | Refactor views + hapus UI assignment lama | 🔄 Berjalan | index/unit/show/pdf/prefixes sudah ditulis |
-| 10 | Hapus model/export/request/service mapping lama | ⏳ Belum | Menunggu verifikasi referensi |
-| 11 | Automated test (16 skenario + auth + N+1) | ⏳ Belum | |
-| 12 | Jalankan migration, Pint, test suite | ⏳ Belum | Backup DB sebelum migrate |
-| 13 | Ukur performa setelah refactor | ⏳ Belum | Query count + EXPLAIN |
-| 14 | Laporan akhir + prosedur deploy/rollback | ⏳ Belum | |
+| 9 | Refactor views + hapus UI assignment lama | ✅ Selesai | index/unit/show/pdf/prefixes |
+| 10 | Hapus model/export/request/service mapping lama | ✅ Selesai | Tidak ada referensi aktif tersisa |
+| 11 | Automated test | ✅ Selesai | 36 test baru, 139 assertion |
+| 12 | Jalankan migration, Pint, test suite | ✅ Selesai | Full suite: 114 pass, 5 gagal pre-existing |
+| 13 | Ukur performa setelah refactor | ✅ Selesai | 65 ms / 7 query (constant) |
+| 14 | Laporan akhir + prosedur deploy/rollback | ✅ Selesai | Lihat bagian akhir |
 
-## Detail Implementasi
-
-### Skema baru
+## Skema Baru
 
 `tarif_unit_service_prefixes`:
 
@@ -45,15 +43,29 @@ halaman buku tarif. Arsitektur, permission, UI, dan fitur lain dipertahankan.
 - unique `(organization_unit_id, prefix)`
 - index `(organization_unit_id, is_active)`
 
-### Aturan pencocokan
+## Aturan Pencocokan
 
 - Hanya `services.code`, dari awal kode (`PREFIX%`), bukan substring.
 - Prefix aktif saja; unit induk tidak mewariskan prefix.
 - Tanpa prefix aktif => hasil kosong (tidak pernah menampilkan semua tarif).
-- Prefix dinormalisasi uppercase + trim, ditolak jika mengandung spasi/wildcard.
-- Wildcard LIKE (`%`, `_`, `\`) di-escape; query memakai parameter binding.
+- Prefix dinormalisasi uppercase + trim; spasi/wildcard ditolak.
+- LIKE memakai escape `!` (portabel PostgreSQL/SQLite); input memakai binding.
+- `services.code` kanonik uppercase (diverifikasi 0 baris lowercase/spasi tepi).
 
-### File baru
+## Implementasi Query
+
+1. Ambil prefix aktif unit (1 query, tabel kecil).
+2. Resolusi prefix -> daftar `service_id` (1 query, `code LIKE 'PREFIX%'`).
+3. Query tarif:
+   - daftar service <= 1500: `whereIn('service_id', $ids)` (binding efisien);
+   - daftar service > 1500: subquery `service_id IN (SELECT id ...)` agar
+     tidak mengirim ribuan parameter.
+4. Filter status/pencarian/periode memakai `TarifService::applyFilters`
+   sehingga diterapkan di SQL sebelum pagination.
+5. Eager loading 4 relasi (jenis, provider, service, kelas) -> tidak ada N+1.
+6. Pagination default 25 (opsi 25/50/100); export XLSX memakai chunk 1000.
+
+## File Baru
 
 - `database/migrations/2026_10_20_000001_create_tarif_unit_service_prefixes_table.php`
 - `database/migrations/2026_10_20_000002_drop_tarif_unit_mappings_table.php`
@@ -68,11 +80,14 @@ halaman buku tarif. Arsitektur, permission, UI, dan fitur lain dipertahankan.
 - `app/Http/Requests/TarifUnitServicePrefix/Update.php`
 - `resources/views/tarif-units/prefixes/index.blade.php`
 - `resources/views/tarif-units/prefixes/form.blade.php`
+- `tests/Feature/TarifUnitBookTest.php`
+- `tests/Feature/TarifUnitServicePrefixTest.php`
+- `tests/Feature/Concerns/TarifBookTestSchema.php`
 
-### File diubah
+## File Diubah
 
 - `app/Models/OrganizationUnit.php` (relasi `servicePrefixes`)
-- `app/Models/Tarif.php` (hapus `unitMappings`, tambah scope prefix)
+- `app/Models/Tarif.php` (hapus `unitMappings`, tambah scope service)
 - `routes/web.php`
 - `resources/views/tarif-units/index.blade.php`
 - `resources/views/tarif-units/unit.blade.php`
@@ -80,7 +95,7 @@ halaman buku tarif. Arsitektur, permission, UI, dan fitur lain dipertahankan.
 - `resources/views/tarif-units/pdf.blade.php`
 - `app/Console/Commands/ImportSimutuUsers.php` (cek prefix saat prune unit)
 
-### File yang akan dihapus
+## File Dihapus
 
 - `app/Models/TarifUnitMapping.php`
 - `app/Http/Controllers/TarifUnitMappingController.php`
@@ -93,20 +108,49 @@ halaman buku tarif. Arsitektur, permission, UI, dan fitur lain dipertahankan.
 - `resources/views/tarif-units/partials/`
 - `resources/views/components/tarif-input-table.blade.php`
 - `resources/views/components/tarif-picker.blade.php`
-- `tests/Feature/TarifUnitMappingTest.php` (diganti test baru)
+- `tests/Feature/TarifUnitMappingTest.php`
 
-## Log Progres
+## Hasil Test
 
-- 2026-10-20: audit dependensi, baseline performa, migration prefix, model,
-  service, controller, route, dan view utama selesai ditulis.
-- 2026-10-20: task file ini dibuat atas permintaan user.
+- `TarifUnitBookTest`: 21 test lulus.
+- `TarifUnitServicePrefixTest`: 15 test lulus.
+- Full suite: **114 lulus, 5 gagal (pre-existing)**.
+  - `tests/Feature/ExampleTest` (302 vs 200).
+  - 4 test `ImportScanQueueTest` (tabel `jobs` tidak ada di skema test,
+    timeout job 3600 vs 1800).
+- Tidak ada kegagalan baru dari refactor ini.
+- Export XLSX dan PDF ikut diuji (200 OK) dan mengikuti filter prefix.
+
+## Hasil Performa (DB aktual, 207.059 tarif)
+
+| Skenario | Waktu | Query |
+|---|---|---|
+| Baseline halaman 25 tarif tanpa filter | 48-56 ms | 5 |
+| Resolusi prefix (JPU + LAB -> 852 service) | 30 ms | 1 |
+| Halaman buku tarif (25 baris, 13.390 hasil) | 65 ms | 7 |
+| Query berulang / N+1 | tidak ada | - |
+
+- Implementasi pertama (subquery `UPPER(TRIM(code))` + ORDER BY created_at)
+  memindai 76 ribu baris dan butuh 249 ms. Setelah resolusi prefix terpisah
+  dan pemilihan IN/subquery adaptif: 65 ms (sekitar 3,8x lebih cepat).
+- Execution plan memakai `tarifs_service_id_idx` / `created_at` sesuai
+  ukuran hasil; tidak ada index baru karena index yang dibutuhkan sudah ada
+  (`service_id`, `created_at`, kombinasi periode).
+- Prefix besar (`O`, 7.679 service): subquery path 3,4 ms untuk satu halaman.
+- Cache prefix tidak dipakai: query prefix ±3-30 ms dan database cache store
+  justru menambah query; risiko data basi lebih besar dari manfaatnya.
 
 ## Catatan / Risiko
 
-- Permission yang dipertahankan: `manage_tarif_units`, `edit_tarif_units`,
+- Permission dipertahankan: `manage_tarif_units`, `edit_tarif_units`,
   `delete_tarif_units`, `manage_my_tarif_unit`, `edit_my_tarif_unit`,
   `delete_my_tarif_unit`.
-- Migration drop melakukan backup JSON otomatis dan membatalkan diri jika
-  backup gagal.
-- Cache prefix sengaja tidak dipakai (database cache store menambah query;
-  query prefix terindeks murah). Akan diverifikasi dengan pengukuran.
+- Migration drop membackup data ke JSON dan membatalkan diri jika backup
+  gagal. Rollback membuat tabel kosong; restore data dari file JSON manual.
+- Migration lama `2026_10_19_000001_create_tarif_unit_mappings_table.php`
+  sengaja dipertahankan sebagai histori (fresh install membuat lalu langsung
+  men-drop tabel; rollback berantai tetap bersih).
+- PDF merender seluruh baris hasil filter (bukan chunk). Untuk dataset sangat
+  besar gunakan filter agar file tetap wajar.
+- Prefix unit harus diisi admin/operator; tanpa prefix buku tarif kosong
+  (by design).

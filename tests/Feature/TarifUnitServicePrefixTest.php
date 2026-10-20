@@ -264,6 +264,11 @@ class TarifUnitServicePrefixTest extends TestCase
         $this->assertSame('123000.00', $tarif->fresh()->tariff);
     }
 
+    public function test_escape_like_memakai_karakter_portabel(): void
+    {
+        $this->assertSame('JPU!%!_!!', TarifUnitServicePrefix::escapeLike('JPU%_!'));
+    }
+
     public function test_migration_drop_membuat_backup_dan_menghapus_tabel_lama(): void
     {
         Schema::create('tarif_unit_mappings', function ($table) {

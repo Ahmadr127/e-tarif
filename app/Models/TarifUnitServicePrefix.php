@@ -70,13 +70,16 @@ class TarifUnitServicePrefix extends Model
     }
 
     /**
-     * Escape wildcard LIKE (`\`, `%`, `_`) sesuai aturan PostgreSQL/SQLite.
-     * Prefix yang lolos validasi tidak memuat karakter ini, escaping tetap
-     * dipakai sebagai lapisan pertahanan.
+     * Escape wildcard LIKE (`!`, `%`, `_`) memakai karakter escape `!`.
+     *
+     * Backslash sengaja tidak dipakai: pada PostgreSQL + PDO, `ESCAPE '\'`
+     * membuat parser parameter PDO salah menghitung placeholder. Prefix yang
+     * lolos validasi tidak memuat karakter ini, escaping tetap dipakai sebagai
+     * lapisan pertahanan.
      */
     public static function escapeLike(string $prefix): string
     {
-        return addcslashes($prefix, '\\%_');
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $prefix);
     }
 
     /**

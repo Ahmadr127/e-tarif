@@ -66,12 +66,39 @@ class Tarif extends Model
     }
 
     /**
-     * Batasi query ke tarif yang kode service-nya cocok dengan salah satu
-     * prefix aktif (pencocokan dari AWAL kode, bukan substring).
+     * Batasi query ke service ID tertentu (hasil resolusi prefix oleh
+     * TarifUnitBookService). Daftar kosong berarti tidak ada tarif.
      *
-     * Prefix dinormalisasi + di-escape; tanpa prefix hasilnya kosong
-     * (bukan seluruh tarif). Subquery memakai index `services_code_upper`
-     * pada PostgreSQL: UPPER(TRIM(code)).
+     * @param  \Illuminate\Database\Eloquent\Builder<Tarif>  $query
+     * @param  array<int, int|string>  $serviceIds
+     * @return \Illuminate\Database\Eloquent\Builder<Tarif>
+     */
+    public function scopeForServiceIds($query, array $serviceIds)
+    {
+        $ids = [];
+        foreach ($serviceIds as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $ids[$id] = true;
+            }
+        }
+        $ids = array_keys($ids);
+
+        if ($ids === []) {
+            // Jangan pernah menghilangkan kondisi: tanpa prefix = kosong.
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('service_id', $ids);
+    }
+
+    /**
+     * Varian subquery untuk daftar prefix yang menghasilkan service sangat
+     * banyak (menghindari parameter IN yang panjang).
+     *
+     * `services.code` disimpan dalam huruf besar (diverifikasi pada data
+     * aktual), prefix dinormalisasi uppercase oleh aplikasi. LIKE memakai
+     * karakter escape `!` yang portabel untuk PostgreSQL dan SQLite.
      *
      * @param  \Illuminate\Database\Eloquent\Builder<Tarif>  $query
      * @param  array<int, string>  $prefixes
@@ -89,7 +116,6 @@ class Tarif extends Model
         $normalized = array_keys($normalized);
 
         if ($normalized === []) {
-            // Jangan pernah menghilangkan kondisi: unit tanpa prefix = kosong.
             return $query->whereRaw('1 = 0');
         }
 
@@ -98,7 +124,7 @@ class Tarif extends Model
             ->where(function ($sub) use ($normalized) {
                 foreach ($normalized as $prefix) {
                     $sub->orWhereRaw(
-                        "UPPER(TRIM(code)) LIKE ? ESCAPE '\\'",
+                        "code LIKE ? ESCAPE '!'",
                         [TarifUnitServicePrefix::escapeLike($prefix).'%']
                     );
                 }

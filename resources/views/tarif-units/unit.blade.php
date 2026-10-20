@@ -102,7 +102,7 @@
             </form>
         </div>
 
-        <x-table :columns="['Service', 'Provider', 'Kelas', 'Tarif (Rp)', 'Periode Berlaku', 'Status', 'Aksi']" :pagination="$tarifs" :showNumber="true" :perPageOptions="[25, 50, 100]" :maxHeight="'70vh'" empty="Tidak ada tarif yang cocok dengan prefix aktif unit ini." class="border-0 rounded-none shadow-none">
+        <x-table :columns="['Service', 'Provider', 'Kelas', 'Tarif (Rp)', 'Periode Berlaku', 'Status', 'Aksi']" :pagination="$tarifs" :showNumber="true" :perPage="(int) request('per_page', 25)" :perPageOptions="[25, 50, 100]" :maxHeight="'70vh'" empty="Tidak ada tarif yang cocok dengan prefix aktif unit ini." class="border-0 rounded-none shadow-none">
             @foreach($tarifs as $tarif)
             <tr class="hover:bg-gray-50 transition-colors">
                 <td class="px-4 py-3 text-center text-gray-500">{{ ($tarifs->firstItem() ?? 1) + $loop->index }}</td>

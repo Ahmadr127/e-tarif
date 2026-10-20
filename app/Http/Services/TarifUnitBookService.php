@@ -3,6 +3,7 @@
 namespace App\Http\Services;
 
 use App\Models\OrganizationUnit;
+use App\Models\Service;
 use App\Models\Tarif;
 use App\Models\TarifUnitServicePrefix;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,6 +26,13 @@ class TarifUnitBookService
     public const PER_PAGE_OPTIONS = [25, 50, 100];
 
     public const DEFAULT_PER_PAGE = 25;
+
+    /**
+     * Di atas batas ini, daftar service_id dikirim sebagai subquery, bukan
+     * parameter IN yang panjang (binding ribuan parameter lebih mahal
+     * daripada scan tabel services yang kecil).
+     */
+    public const MAX_INLINE_SERVICE_IDS = 1500;
 
     public function __construct(protected TarifService $tarifService) {}
 
@@ -109,6 +117,37 @@ class TarifUnitBookService
     }
 
     /**
+     * Resolusi prefix -> service_id. Query terpisah dan ringan (tabel
+     * services ±10 ribu baris; EXPLAIN menunjukkan seq scan ±3-12 ms, lebih
+     * murah daripada memaksa index ekspresi untuk LIKE).
+     *
+     * @param  array<int, string>  $prefixes
+     * @return array<int, int>
+     */
+    public function serviceIdsForPrefixes(array $prefixes): array
+    {
+        $prefixes = $this->normalizePrefixes($prefixes);
+
+        if ($prefixes === []) {
+            return [];
+        }
+
+        return Service::query()
+            ->select('id')
+            ->where(function ($sub) use ($prefixes) {
+                foreach ($prefixes as $prefix) {
+                    $sub->orWhereRaw(
+                        "code LIKE ? ESCAPE '!'",
+                        [TarifUnitServicePrefix::escapeLike($prefix).'%']
+                    );
+                }
+            })
+            ->pluck('id')
+            ->map(static fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
      * Query dasar buku tarif satu unit (dipakai halaman, export, dan
      * pengecekan detail). Filter memakai TarifService::applyFilters agar
      * pencarian/status/periode konsisten dengan halaman daftar tarif.
@@ -119,14 +158,22 @@ class TarifUnitBookService
      */
     public function query(OrganizationUnit $unit, array $filters = [], ?array $prefixes = null): Builder
     {
+        $prefixes = $prefixes ?? $this->activePrefixes($unit);
+        $serviceIds = $this->serviceIdsForPrefixes($prefixes);
+
         $query = Tarif::query()
             ->with([
                 'jenisTarif:id,name',
                 'provider:id,code,name',
                 'service:id,code,name,description',
                 'serviceClass:id,code,name',
-            ])
-            ->forServicePrefixes($prefixes ?? $this->activePrefixes($unit));
+            ]);
+
+        if (count($serviceIds) > self::MAX_INLINE_SERVICE_IDS) {
+            $query->forServicePrefixes($prefixes);
+        } else {
+            $query->forServiceIds($serviceIds);
+        }
 
         $this->tarifService->applyFilters($query, $filters);
 
@@ -170,8 +217,7 @@ class TarifUnitBookService
      */
     public function contains(OrganizationUnit $unit, Tarif $tarif, ?array $prefixes = null): bool
     {
-        return Tarif::query()
-            ->forServicePrefixes($prefixes ?? $this->activePrefixes($unit))
+        return $this->query($unit, [], $prefixes)
             ->whereKey($tarif->getKey())
             ->exists();
     }

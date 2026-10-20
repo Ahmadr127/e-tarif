@@ -64,7 +64,7 @@ class TarifUnitServicePrefixService
 
         $this->activityLogger->logDeleted(
             $prefix,
-            'Menghapus prefix '.$prefix->prefix.' dari buku tarif unit '.($prefix->organizationUnit?->name ?? '-')
+            'Menghapus prefix '.$prefix->prefix.' dari buku tarif unit '.$prefix->organizationUnit->name
         );
 
         return (bool) $prefix->delete();

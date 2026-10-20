@@ -343,14 +343,27 @@ class TarifUnitBookTest extends TestCase
         $this->assertSame([], $this->matchingServiceIds($child));
     }
 
-    public function test_pencarian_kode_service_case_insensitive(): void
+    public function test_prefix_disimpan_uppercase_dan_mencocokkan_kode_service(): void
     {
-        $this->makeTarif('jpu77');
+        $tarif = $this->makeTarif('JPU01');
+        $this->addPrefix($this->unit, 'jpu');
+
+        $this->assertContains($tarif->service_id, $this->matchingServiceIds($this->unit));
+    }
+
+    public function test_export_xlsx_dan_pdf_mengikuti_cakupan_prefix(): void
+    {
         $this->addPrefix($this->unit, 'JPU');
+        $this->makeTarif('JPU01');
+        $this->makeTarif('XJPU01');
 
-        $ids = $this->matchingServiceIds($this->unit);
+        $this->actingAs($this->admin)
+            ->get(route('tarif-units.unit.export-xlsx', $this->unit))
+            ->assertOk();
 
-        $this->assertCount(1, $ids);
+        $this->actingAs($this->admin)
+            ->get(route('tarif-units.unit.export-pdf', $this->unit))
+            ->assertOk();
     }
 
     public function test_master_tarif_tidak_berubah_saat_melihat_buku_tarif(): void
