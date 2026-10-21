@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CalculationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HelperController;
 use App\Http\Controllers\JenisTarifController;
@@ -17,6 +16,9 @@ use App\Http\Controllers\TarifController;
 use App\Http\Controllers\TarifImportController;
 use App\Http\Controllers\TarifUnitBookController;
 use App\Http\Controllers\TarifUnitServicePrefixController;
+use App\Http\Controllers\UnitCostMasterController;
+use App\Http\Controllers\UnitCostParameterController;
+use App\Http\Controllers\UnitCostPeriodController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -106,25 +108,95 @@ Route::middleware('auth')->group(function () {
         Route::resource('helpers', HelperController::class);
     });
 
-    // Calculation engine unit cost
-    Route::middleware('permission:manage_calculations')->group(function () {
-        Route::get('calculations/master', [CalculationController::class, 'master'])
-            ->name('calculations.master');
-        Route::get('calculations/create', [CalculationController::class, 'create'])
-            ->name('calculations.create');
-        Route::post('calculations', [CalculationController::class, 'store'])
-            ->name('calculations.store');
-        Route::get('calculations/{run}', [CalculationController::class, 'show'])
-            ->whereNumber('run')
-            ->name('calculations.show');
-        Route::get('calculations', [CalculationController::class, 'index'])
+    // Unit Cost: Periode -> Komponen -> Parameter.
+    Route::middleware('permission:manage_unit_cost_periods|manage_calculations')->group(function () {
+        Route::get('calculations', [UnitCostPeriodController::class, 'index'])
             ->name('calculations.index');
+        Route::get('calculations/periods/create', [UnitCostPeriodController::class, 'create'])
+            ->name('calculations.periods.create');
+        Route::post('calculations/periods', [UnitCostPeriodController::class, 'store'])
+            ->name('calculations.periods.store');
+        Route::get('calculations/periods/{period}/edit', [UnitCostPeriodController::class, 'edit'])
+            ->whereNumber('period')
+            ->name('calculations.periods.edit');
+        Route::put('calculations/periods/{period}', [UnitCostPeriodController::class, 'update'])
+            ->whereNumber('period')
+            ->name('calculations.periods.update');
+        Route::delete('calculations/periods/{period}', [UnitCostPeriodController::class, 'destroy'])
+            ->whereNumber('period')
+            ->name('calculations.periods.destroy');
+        Route::post('calculations/periods/{period}/activate', [UnitCostPeriodController::class, 'activate'])
+            ->whereNumber('period')
+            ->name('calculations.periods.activate');
+        Route::post('calculations/periods/{period}/close', [UnitCostPeriodController::class, 'close'])
+            ->whereNumber('period')
+            ->name('calculations.periods.close');
+        Route::get('calculations/periods/{period}', [UnitCostPeriodController::class, 'show'])
+            ->whereNumber('period')
+            ->name('calculations.periods.show');
     });
 
-    Route::middleware('permission:approve_calculations')->group(function () {
-        Route::post('calculations/{run}/approve', [CalculationController::class, 'approve'])
-            ->whereNumber('run')
-            ->name('calculations.approve');
+    Route::middleware('permission:view_unit_cost_results|edit_unit_cost_parameters|manage_calculations')->group(function () {
+        Route::get('calculations/periods/{period}/components/{component}', [UnitCostParameterController::class, 'edit'])
+            ->whereNumber('period')
+            ->where('component', 'global|[0-9]+')
+            ->name('calculations.parameters.edit');
+    });
+
+    Route::middleware('permission:edit_unit_cost_parameters|manage_calculations')->group(function () {
+        Route::put('calculations/periods/{period}/components/{component}', [UnitCostParameterController::class, 'update'])
+            ->whereNumber('period')
+            ->where('component', 'global|[0-9]+')
+            ->name('calculations.parameters.update');
+        Route::post('calculations/parameters/preview', [UnitCostParameterController::class, 'preview'])
+            ->name('calculations.parameters.preview');
+    });
+
+    Route::middleware('permission:manage_unit_cost_masters|manage_calculations')->group(function () {
+        Route::get('calculations/master', [UnitCostMasterController::class, 'index'])
+            ->name('calculations.master');
+
+        Route::get('calculations/master/components/create', [UnitCostMasterController::class, 'createComponent'])
+            ->name('calculations.master.components.create');
+        Route::post('calculations/master/components', [UnitCostMasterController::class, 'storeComponent'])
+            ->name('calculations.master.components.store');
+        Route::get('calculations/master/components/{component}/edit', [UnitCostMasterController::class, 'editComponent'])
+            ->whereNumber('component')
+            ->name('calculations.master.components.edit');
+        Route::put('calculations/master/components/{component}', [UnitCostMasterController::class, 'updateComponent'])
+            ->whereNumber('component')
+            ->name('calculations.master.components.update');
+        Route::delete('calculations/master/components/{component}', [UnitCostMasterController::class, 'destroyComponent'])
+            ->whereNumber('component')
+            ->name('calculations.master.components.destroy');
+
+        Route::get('calculations/master/parameters/create', [UnitCostMasterController::class, 'createParameter'])
+            ->name('calculations.master.parameters.create');
+        Route::post('calculations/master/parameters', [UnitCostMasterController::class, 'storeParameter'])
+            ->name('calculations.master.parameters.store');
+        Route::get('calculations/master/parameters/{parameter}/edit', [UnitCostMasterController::class, 'editParameter'])
+            ->whereNumber('parameter')
+            ->name('calculations.master.parameters.edit');
+        Route::put('calculations/master/parameters/{parameter}', [UnitCostMasterController::class, 'updateParameter'])
+            ->whereNumber('parameter')
+            ->name('calculations.master.parameters.update');
+        Route::delete('calculations/master/parameters/{parameter}', [UnitCostMasterController::class, 'destroyParameter'])
+            ->whereNumber('parameter')
+            ->name('calculations.master.parameters.destroy');
+    });
+
+    Route::middleware('permission:view_unit_cost_results|manage_calculations')->group(function () {
+        Route::get('calculations/history', [UnitCostPeriodController::class, 'history'])
+            ->name('calculations.history.index');
+        Route::get('calculations/history/{snapshot}', [UnitCostPeriodController::class, 'historyShow'])
+            ->whereNumber('snapshot')
+            ->name('calculations.history.show');
+    });
+
+    Route::middleware('permission:approve_unit_cost_results|approve_calculations')->group(function () {
+        Route::post('calculations/periods/{period}/approve', [UnitCostPeriodController::class, 'approve'])
+            ->whereNumber('period')
+            ->name('calculations.periods.approve');
     });
 
     // Buku Tarif unit sendiri (role operator unit): unit diambil dari profil

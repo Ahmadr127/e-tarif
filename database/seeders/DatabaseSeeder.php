@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
             OrganizationUnitSeeder::class,
             UserSeeder::class,
             HelperSeeder::class,
-            CalculationSeeder::class,
+            UnitCostSeeder::class,
             // TarifManagementSeeder::class,
         ]);
     }

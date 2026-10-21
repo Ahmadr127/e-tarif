@@ -103,7 +103,7 @@ return [
                 'icon' => 'bi-calculator',
                 'route' => 'calculations.index',
                 'route_pattern' => 'calculations.*',
-                'permission' => 'manage_calculations',
+                'permissions' => ['manage_unit_cost_periods', 'manage_calculations'],
             ],
             [
                 'label' => 'Buku Tarif Admin',

@@ -10,14 +10,18 @@ class CheckPermission
 {
     public function handle(Request $request, Closure $next, $permission)
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect('/login');
         }
 
-        if (!Auth::user()->hasPermission($permission)) {
-            abort(403, 'Unauthorized action.');
+        $permissions = array_filter(array_map('trim', explode('|', (string) $permission)));
+
+        foreach ($permissions as $permissionName) {
+            if (Auth::user()->hasPermission($permissionName)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        abort(403, 'Unauthorized action.');
     }
 }
