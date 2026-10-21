@@ -99,6 +99,13 @@ return [
                 'permission' => 'manage_tarifs',
             ],
             [
+                'label' => 'Kalkulasi Unit Cost',
+                'icon' => 'bi-calculator',
+                'route' => 'calculations.index',
+                'route_pattern' => 'calculations.*',
+                'permission' => 'manage_calculations',
+            ],
+            [
                 'label' => 'Buku Tarif Admin',
                 'icon' => 'bi-journal-bookmark-fill',
                 'route' => 'tarif-units.index',

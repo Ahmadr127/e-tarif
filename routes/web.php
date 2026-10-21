@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalculationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HelperController;
 use App\Http\Controllers\JenisTarifController;
@@ -103,6 +104,27 @@ Route::middleware('auth')->group(function () {
     // Helper Master Data routes (aturan persentase billing bedah)
     Route::middleware('permission:manage_helpers')->group(function () {
         Route::resource('helpers', HelperController::class);
+    });
+
+    // Calculation engine unit cost
+    Route::middleware('permission:manage_calculations')->group(function () {
+        Route::get('calculations/master', [CalculationController::class, 'master'])
+            ->name('calculations.master');
+        Route::get('calculations/create', [CalculationController::class, 'create'])
+            ->name('calculations.create');
+        Route::post('calculations', [CalculationController::class, 'store'])
+            ->name('calculations.store');
+        Route::get('calculations/{run}', [CalculationController::class, 'show'])
+            ->whereNumber('run')
+            ->name('calculations.show');
+        Route::get('calculations', [CalculationController::class, 'index'])
+            ->name('calculations.index');
+    });
+
+    Route::middleware('permission:approve_calculations')->group(function () {
+        Route::post('calculations/{run}/approve', [CalculationController::class, 'approve'])
+            ->whereNumber('run')
+            ->name('calculations.approve');
     });
 
     // Buku Tarif unit sendiri (role operator unit): unit diambil dari profil
