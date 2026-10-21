@@ -158,12 +158,6 @@ class ParameterEvaluationService
                     ]);
                 }
 
-                if ($parameter->isDerived() && $inputType === UnitCostParameterEntry::INPUT_VALUE) {
-                    throw ValidationException::withMessages([
-                        "entries.{$parameterId}.input_type" => 'Parameter turunan harus memakai Input Rumus.',
-                    ]);
-                }
-
                 $unitId = $this->unitIdFor($parameter, $unit);
 
                 if ($parameter->requiresUnit() && $unitId === null) {
@@ -843,9 +837,6 @@ class ParameterEvaluationService
         if ($context['input_type'] === UnitCostParameterEntry::INPUT_FORMULA) {
             $status = UnitCostParameterEntry::STATUS_INVALID;
             $error = 'Rumus belum diisi.';
-        } elseif ($context['parameter']->isDerived()) {
-            $status = UnitCostParameterEntry::STATUS_INVALID;
-            $error = 'Parameter turunan harus memakai Input Rumus.';
         } elseif ($context['value_error'] !== null) {
             $status = UnitCostParameterEntry::STATUS_INVALID;
             $error = (string) $context['value_error'];
@@ -976,10 +967,7 @@ class ParameterEvaluationService
                 }
             }
         } else {
-            if ($context['parameter']->isDerived()) {
-                $status = UnitCostParameterEntry::STATUS_INVALID;
-                $error = 'Parameter turunan harus memakai Input Rumus.';
-            } elseif ($context['value_error'] !== null) {
+            if ($context['value_error'] !== null) {
                 $status = UnitCostParameterEntry::STATUS_INVALID;
                 $error = (string) $context['value_error'];
             } elseif ($context['input_value'] !== null) {

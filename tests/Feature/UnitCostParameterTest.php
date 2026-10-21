@@ -113,35 +113,40 @@ class UnitCostParameterTest extends TestCase
         $this->assertStringContainsString('Pembagian dengan nol', $divideEntry->validation_error);
     }
 
-    public function test_formula_uses_global_variable_instead_of_parameter_code(): void
+    public function test_formula_uses_parameter_code_as_global_variable(): void
     {
         $component = $this->makeComponent();
-        $a = $this->makeParameter($component, 'param_a', 'A', sortOrder: 10, variable: 'var_a');
-        $b = $this->makeParameter($component, 'param_b', 'B', sortOrder: 20, sourceType: 'derived', variable: 'var_b');
+        $a = $this->makeParameter($component, 'param_a', 'A', sortOrder: 10);
+        $b = $this->makeParameter($component, 'param_b', 'B', sortOrder: 20, sourceType: 'derived');
+
+        // Kolom lama `variable` sengaja dibuat berbeda untuk membuktikan formula memakai `code`.
+        $a->forceFill(['variable' => 'var_a'])->saveQuietly();
+        $b->forceFill(['variable' => 'var_b'])->saveQuietly();
+
         $period = $this->makePeriod();
-
-        $this->save($period, $this->unitCostUnit, $component, [
-            $a->id => ['input_type' => 'value', 'input_value' => 10],
-            $b->id => ['input_type' => 'formula', 'formula_text' => '{var_a} * 2'],
-        ])->assertRedirect();
-
-        $this->assertEntry($period, $b, $this->unitCostUnit, 'valid', 20.0);
-
-        $evaluation = app(ParameterEvaluationService::class)->evaluate($period, $this->unitCostUnit);
-        $this->assertSame(10.0, $evaluation->values['var_a']);
-        $this->assertSame(20.0, $evaluation->values['var_b']);
-        $this->assertArrayNotHasKey('param_a', $evaluation->values);
-        $this->assertArrayNotHasKey('param_b', $evaluation->values);
 
         $this->save($period, $this->unitCostUnit, $component, [
             $a->id => ['input_type' => 'value', 'input_value' => 10],
             $b->id => ['input_type' => 'formula', 'formula_text' => '{param_a} * 2'],
         ])->assertRedirect();
 
+        $this->assertEntry($period, $b, $this->unitCostUnit, 'valid', 20.0);
+
+        $evaluation = app(ParameterEvaluationService::class)->evaluate($period, $this->unitCostUnit);
+        $this->assertSame(10.0, $evaluation->values['param_a']);
+        $this->assertSame(20.0, $evaluation->values['param_b']);
+        $this->assertArrayNotHasKey('var_a', $evaluation->values);
+        $this->assertArrayNotHasKey('var_b', $evaluation->values);
+
+        $this->save($period, $this->unitCostUnit, $component, [
+            $a->id => ['input_type' => 'value', 'input_value' => 10],
+            $b->id => ['input_type' => 'formula', 'formula_text' => '{var_a} * 2'],
+        ])->assertRedirect();
+
         $invalid = $this->entryFor($period, $b, $this->unitCostUnit);
         $this->assertSame(UnitCostParameterEntry::STATUS_INVALID, $invalid->validation_status);
         $this->assertNull($invalid->result_value);
-        $this->assertStringContainsString('param_a', (string) $invalid->validation_error);
+        $this->assertStringContainsString('var_a', (string) $invalid->validation_error);
     }
 
     public function test_missing_dependency_is_incomplete_not_zero(): void
@@ -294,7 +299,7 @@ class UnitCostParameterTest extends TestCase
         $this->assertSame(20.0, (float) $this->entryFor($period, $a, $this->unitCostUnit)->input_value);
     }
 
-    public function test_derived_parameter_rejects_value_input_and_transaction_rolls_back(): void
+    public function test_derived_parameter_can_use_value_input_when_method_changed(): void
     {
         $component = $this->makeComponent();
         $a = $this->makeParameter($component, 'test_a', 'A', sortOrder: 10);
@@ -304,16 +309,13 @@ class UnitCostParameterTest extends TestCase
         $this->save($period, $this->unitCostUnit, $component, [
             $a->id => ['input_type' => 'value', 'input_value' => 5],
             $derived->id => ['input_type' => 'value', 'input_value' => 7],
-        ])->assertSessionHasErrors('entries.'.$derived->id.'.input_type');
+        ])->assertSessionHasNoErrors();
 
-        $this->assertDatabaseMissing('unit_cost_parameter_entries', [
-            'period_id' => $period->id,
-            'parameter_id' => $a->id,
-        ]);
-        $this->assertDatabaseMissing('unit_cost_parameter_entries', [
-            'period_id' => $period->id,
-            'parameter_id' => $derived->id,
-        ]);
+        $entry = $this->entryFor($period, $derived, $this->unitCostUnit);
+
+        $this->assertSame('value', $entry->input_type);
+        $this->assertSame(7.0, (float) $entry->input_value);
+        $this->assertSame('valid', $entry->validation_status);
     }
 
     public function test_permission_view_and_edit_are_separated(): void
@@ -414,12 +416,10 @@ class UnitCostParameterTest extends TestCase
         string $scope = 'unit_period',
         string $unit = 'rupiah',
         string $valueType = 'decimal',
-        ?string $variable = null,
     ): UnitCostParameter {
         return UnitCostParameter::create([
             'component_id' => $component->id,
             'code' => $code,
-            'variable' => $variable ?? $code,
             'name' => $name,
             'value_type' => $valueType,
             'unit' => $unit,

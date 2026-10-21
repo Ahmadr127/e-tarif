@@ -27,8 +27,8 @@
         <span>Parameter</span>
     </div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
-        <div class="xl:col-span-3 space-y-4">
+    <div class="space-y-4">
+        <div>
             <x-card padding="false">
                 <x-slot name="title">{{ $componentName }}</x-slot>
                 <x-slot name="subtitle">
@@ -36,6 +36,21 @@
                     @if($unit) · Unit {{ $unit->name }} ({{ $unit->code }}) @else · Tanpa unit (global) @endif
                 </x-slot>
                 <x-slot name="actions">
+                    <x-variable-help-modal :parameters="$allParameters" />
+
+                    @if(auth()->user()?->hasPermission('manage_unit_cost_masters') || auth()->user()?->hasPermission('manage_calculations'))
+                        <a href="{{ route('calculations.master.parameters.create', [
+                                'component_id' => $componentModel?->id,
+                                'period_id' => $period->id,
+                                'unit_id' => $unit?->id ?? '0',
+                            ]) }}"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-sp-primary border border-sp-primary/30 rounded-md bg-white hover:bg-sp-primary/5 transition-colors"
+                           title="Tambah parameter master">
+                            <i class="bi bi-plus-lg"></i>
+                            <span class="hidden sm:inline">Tambah Parameter</span>
+                        </a>
+                    @endif
+
                     <span id="preview-indicator" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
                         <i class="bi bi-circle-fill text-[6px]"></i> Preview otomatis
                     </span>
@@ -74,13 +89,12 @@
                         </div>
                     @else
                         <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                            <table class="w-full text-sm min-w-[72rem]">
+                            <table class="w-full text-sm min-w-[64rem]">
                                 <thead class="bg-gray-100">
                                     <tr>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 w-10">No.</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-48">Nama Parameter</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-40">Variable Global</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-36">Sumber Data</th>
+                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-40">Kode Parameter</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-24">Satuan</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-32">Metode Input</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-72">Nilai / Rumus</th>
@@ -107,35 +121,18 @@
                                             <td class="px-3 py-3 text-center text-gray-500">{{ $loop->iteration }}</td>
                                             <td class="px-3 py-3">
                                                 <div class="font-semibold text-gray-900">{{ $parameter->name }}</div>
-                                                @if($parameter->description)
-                                                    <div class="mt-0.5 text-xs text-gray-500">{{ $parameter->description }}</div>
-                                                @endif
-                                                @if($parameter->isDerived())
-                                                    <span class="mt-1 inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-50 text-blue-700">turunan / formula</span>
-                                                @endif
                                             </td>
                                             <td class="px-3 py-3">
-                                                <span class="font-mono text-xs font-semibold text-sp-navy break-all">{{ $parameter->formulaKey() }}</span>
-                                                @if($parameter->code !== $parameter->formulaKey())
-                                                    <div class="mt-0.5 font-mono text-[10px] text-gray-400 break-all">kode: {{ $parameter->code }}</div>
-                                                @endif
+                                                <span class="font-mono text-xs font-semibold text-sp-navy break-all">{{ '{'.$parameter->formulaKey().'}' }}</span>
                                             </td>
-                                            <td class="px-3 py-3 text-xs text-gray-600">{{ $parameter->source_name ?: '-' }}</td>
                                             <td class="px-3 py-3 text-xs text-gray-600">{{ $parameter->unit ?: '-' }}</td>
                                             <td class="px-3 py-3">
-                                                @if($parameter->isDerived())
-                                                    <input type="hidden" name="entries[{{ $parameterId }}][input_type]" value="formula">
-                                                    <select disabled class="w-full text-xs px-2 py-1.5 border border-gray-300 rounded-md bg-gray-100 text-gray-500">
-                                                        <option>Input Rumus</option>
-                                                    </select>
-                                                @else
-                                                    <select name="entries[{{ $parameterId }}][input_type]"
-                                                            class="method-select w-full text-xs px-2 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary"
-                                                            data-previous="{{ $row['input_type'] }}">
-                                                        <option value="value" {{ $inputType === 'value' ? 'selected' : '' }}>Input Nilai</option>
-                                                        <option value="formula" {{ $inputType === 'formula' ? 'selected' : '' }}>Input Rumus</option>
-                                                    </select>
-                                                @endif
+                                                <select name="entries[{{ $parameterId }}][input_type]"
+                                                        class="method-select w-full text-xs px-2 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary"
+                                                        data-previous="{{ $row['input_type'] }}">
+                                                    <option value="value" {{ $inputType === 'value' ? 'selected' : '' }}>Input Nilai</option>
+                                                    <option value="formula" {{ $inputType === 'formula' ? 'selected' : '' }}>Input Rumus</option>
+                                                </select>
                                             </td>
                                             <td class="px-3 py-3">
                                                 <div class="value-field {{ $inputType === 'formula' ? 'hidden' : '' }}">
@@ -150,7 +147,7 @@
                                                               placeholder="contoh: {luas_bangunan_tindakan} / {luas_bangunan_keseluruhan}"
                                                               class="formula-input w-full text-xs px-2.5 py-2 border border-gray-300 rounded-md bg-white font-mono leading-5 focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">{{ $formulaText }}</textarea>
                                                     <div class="mt-1 text-[10px] text-gray-500">
-                                                        Gunakan referensi {variable} global. Operator + - * /, kurung, dan fungsi abs, ceil, floor, sqrt, round, min, max.
+                                                        Gunakan referensi {kode} parameter. Operator + - * /, kurung, dan fungsi abs, ceil, floor, sqrt, round, min, max.
                                                     </div>
                                                 </div>
                                                 <p class="row-error mt-1 text-xs text-red-600 {{ $row['error'] ? '' : 'hidden' }}">{{ $row['error'] }}</p>
@@ -198,51 +195,6 @@
             </x-card>
         </div>
 
-        <div class="space-y-4">
-            <x-card padding="false">
-                <x-slot name="title">Bantuan Kode Variabel</x-slot>
-                <x-slot name="subtitle">Klik untuk menyalin referensi {variable} global</x-slot>
-
-                <div class="p-3 border-b border-gray-100">
-                    <input type="search" id="variable-search" placeholder="Cari kode atau nama parameter..."
-                           class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                </div>
-
-                <div class="max-h-[38rem] overflow-y-auto divide-y divide-gray-100">
-                    @forelse($allParameters as $variable)
-                        <div class="variable-item px-3 py-2.5" data-search="{{ mb_strtolower($variable->formulaKey().' '.$variable->code.' '.$variable->name) }}">
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                    <div class="font-mono text-xs font-semibold text-sp-navy break-all">{{ $variable->formulaKey() }}</div>
-                                    @if($variable->code !== $variable->formulaKey())
-                                        <div class="font-mono text-[10px] text-gray-400 break-all">kode: {{ $variable->code }}</div>
-                                    @endif
-                                    <div class="text-xs text-gray-700">{{ $variable->name }}</div>
-                                    <div class="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-gray-500">
-                                        <span class="rounded bg-gray-100 px-1.5 py-0.5">{{ $variable->value_type }}</span>
-                                        <span class="rounded bg-gray-100 px-1.5 py-0.5">{{ $variable->scope }}</span>
-                                        @if($variable->unit)<span class="rounded bg-gray-100 px-1.5 py-0.5">{{ $variable->unit }}</span>@endif
-                                        @if($variable->isDerived())<span class="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">turunan</span>@endif
-                                    </div>
-                                </div>
-                                <button type="button" data-copy-variable="{{ '{'.$variable->formulaKey().'}' }}"
-                                        class="copy-variable flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-sp-primary border border-sp-primary/30 rounded hover:bg-sp-primary/5"
-                                        title="Salin referensi variabel">
-                                    <i class="bi bi-clipboard"></i> Salin
-                                </button>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="px-3 py-4 text-sm text-gray-500">Belum ada parameter aktif.</div>
-                    @endforelse
-                </div>
-            </x-card>
-
-            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                Parameter turunan wajib memakai Input Rumus. Formula yang mereferensikan parameter yang belum lengkap
-                akan berstatus belum lengkap, bukan dianggap nol.
-            </div>
-        </div>
     </div>
 </div>
 @endsection

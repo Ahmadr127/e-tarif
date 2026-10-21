@@ -61,12 +61,12 @@ class UnitCostPeriodTest extends TestCase
     public function test_period_show_lists_components_and_parameter_form(): void
     {
         $period = $this->createPeriod();
-        $component = UnitCostComponent::query()->where('code', 'SDM')->firstOrFail();
+        $component = UnitCostComponent::query()->where('code', 'GAJI')->firstOrFail();
 
         $this->actingAs($this->unitCostUser)
             ->get(route('calculations.periods.show', ['period' => $period, 'unit_id' => $this->unitCostUnit->id]))
             ->assertOk()
-            ->assertSee('Sumber Daya Manusia')
+            ->assertSee('Gaji Pegawai')
             ->assertSee('Keperawatan')
             ->assertDontSee('Hitung dan Simpan');
 
@@ -78,7 +78,8 @@ class UnitCostPeriodTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('Nama Parameter')
-            ->assertSee('Variable Global')
+            ->assertSee('Kode Parameter')
+            ->assertDontSee('Sumber Data')
             ->assertSee('Metode Input')
             ->assertSee('Input Nilai')
             ->assertSee('Input Rumus')
@@ -102,7 +103,7 @@ class UnitCostPeriodTest extends TestCase
 
         $this->assertSame(UnitCostPeriod::STATUS_CLOSED, $period->fresh()->status);
 
-        $component = UnitCostComponent::query()->where('code', 'SDM')->firstOrFail();
+        $component = UnitCostComponent::query()->where('code', 'GAJI')->firstOrFail();
         $parameter = $component->parameters()->firstOrFail();
 
         $this->actingAs($this->unitCostUser)
@@ -155,9 +156,9 @@ class UnitCostPeriodTest extends TestCase
     public function test_master_and_history_pages_are_accessible(): void
     {
         $this->actingAs($this->unitCostUser)
-            ->get(route('calculations.master'))
+            ->get(route('calculations.master', ['section' => 'parameters']))
             ->assertOk()
-            ->assertSee('Master Komponen dan Parameter')
+            ->assertSee('Master Parameter')
             ->assertSee('luas_bangunan_keseluruhan');
 
         $this->actingAs($this->unitCostUser)

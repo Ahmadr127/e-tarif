@@ -32,6 +32,22 @@ hanya untuk tampilan.
    - Komponen yang masih memiliki parameter tidak dapat dihapus; parameter yang
      sudah memiliki entry atau riwayat formula juga tidak dapat dihapus.
 
+## Master Seeder
+
+`UnitCostSeeder` mengisi 18 komponen dan 61 parameter aktif:
+
+- 59 parameter bisnis sesuai pengelompokan Bangunan, Pasien, Bed, Penyusutan
+  Unit, CIU, Listrik, Air, Internet, Penyusutan Gedung, Gaji, Cleaning,
+  Security, Limbah Medis, Laundry, Overhead Lainnya, Amenities, dan Makan.
+- 2 variabel konfigurasi: `rasio_alokasi_unit` (mewakili angka 3 pada sumber)
+  dan `umur_manfaat_gedung_tahun` (mewakili 20 tahun).
+
+Formula memakai variable global, bukan nomor baris atau angka hardcode:
+`{jumlah_hari_setahun}`, `{rasio_alokasi_unit}`, dan
+`{umur_manfaat_gedung_tahun}`. Rumus acuan disimpan sebagai versi 1 pada
+periode yang masih dapat diedit agar form langsung terisi; entry baru dibuat
+saat pengguna menekan **Simpan**.
+
 ## Skema Database
 
 Migration: `2026_10_21_100000_create_unit_cost_tables.php`.

@@ -9,40 +9,57 @@ use App\Http\Requests\UnitCost\UpdateUnitCostParameter;
 use App\Models\UnitCostComponent;
 use App\Models\UnitCostFormulaVersion;
 use App\Models\UnitCostParameter;
+use App\Models\UnitCostPeriod;
 use Illuminate\Http\Request;
 
 class UnitCostMasterController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $components = UnitCostComponent::query()
-            ->withCount('parameters')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+        $section = (string) $request->input('section', 'components');
 
-        $parameters = UnitCostParameter::query()
-            ->with('component')
-            ->withCount(['entries', 'formulaVersions'])
-            ->orderBy('component_id')
-            ->orderBy('sort_order')
-            ->orderBy('variable')
-            ->get();
+        if (! in_array($section, ['components', 'parameters', 'formula-history'], true)) {
+            $section = 'components';
+        }
 
-        $globalVariables = $parameters
-            ->where('is_active', true)
-            ->sortBy('variable')
-            ->values();
+        $components = collect();
+        $parameters = collect();
+        $formulaVersions = null;
 
-        $formulaVersions = UnitCostFormulaVersion::query()
-            ->with(['parameter', 'period'])
-            ->latest('id')
-            ->paginate(50);
+        if ($section === 'components') {
+            $components = UnitCostComponent::query()
+                ->withCount([
+                    'parameters' => fn ($query) => $query->active(),
+                ])
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+        } elseif ($section === 'parameters') {
+            $parameters = UnitCostParameter::query()
+                ->with('component')
+                ->withCount(['entries', 'formulaVersions'])
+                ->orderBy('component_id')
+                ->orderBy('sort_order')
+                ->orderBy('code')
+                ->get();
+        } else {
+            $formulaVersions = UnitCostFormulaVersion::query()
+                ->with(['parameter', 'period'])
+                ->latest('id')
+                ->paginate(50);
+        }
+
+        $counts = [
+            'components' => UnitCostComponent::query()->count(),
+            'parameters' => UnitCostParameter::query()->count(),
+            'formula_history' => UnitCostFormulaVersion::query()->count(),
+        ];
 
         return view('unit-cost.master', [
+            'section' => $section,
+            'counts' => $counts,
             'components' => $components,
             'parameters' => $parameters,
-            'globalVariables' => $globalVariables,
             'formulaVersions' => $formulaVersions,
         ]);
     }
@@ -66,7 +83,7 @@ class UnitCostMasterController extends Controller
         $component = UnitCostComponent::create($data);
 
         return redirect()
-            ->route('calculations.master')
+            ->route('calculations.master', ['section' => 'components'])
             ->with('success', "Komponen '{$component->name}' berhasil dibuat.");
     }
 
@@ -88,7 +105,7 @@ class UnitCostMasterController extends Controller
         $component->update($data);
 
         return redirect()
-            ->route('calculations.master')
+            ->route('calculations.master', ['section' => 'components'])
             ->with('success', "Komponen '{$component->name}' berhasil diperbarui.");
     }
 
@@ -96,7 +113,7 @@ class UnitCostMasterController extends Controller
     {
         if ($component->parameters()->exists()) {
             return redirect()
-                ->route('calculations.master')
+                ->route('calculations.master', ['section' => 'components'])
                 ->with('error', "Komponen '{$component->name}' tidak dapat dihapus karena masih memiliki parameter.");
         }
 
@@ -104,7 +121,7 @@ class UnitCostMasterController extends Controller
         $component->delete();
 
         return redirect()
-            ->route('calculations.master')
+            ->route('calculations.master', ['section' => 'components'])
             ->with('success', "Komponen '{$name}' berhasil dihapus.");
     }
 
@@ -121,6 +138,8 @@ class UnitCostMasterController extends Controller
                 'sort_order' => 0,
             ]),
             'components' => $this->componentsForForm(),
+            'returnPeriodId' => $request->filled('period_id') ? (int) $request->input('period_id') : null,
+            'returnUnitId' => $request->filled('unit_id') ? (string) $request->input('unit_id') : null,
         ]);
     }
 
@@ -129,13 +148,32 @@ class UnitCostMasterController extends Controller
         $data = $request->validated();
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
         $data['is_required'] = $request->has('is_required') ? $request->boolean('is_required') : false;
-        $data['sort_order'] = (int) ($data['sort_order'] ?? 0);
+        $data['sort_order'] = $this->nextParameterSortOrder($data['component_id'] ?? null);
 
         $parameter = UnitCostParameter::create($data);
+        $message = sprintf(
+            "Parameter '%s' dengan kode variabel {%s} berhasil dibuat.",
+            $parameter->name,
+            $parameter->formulaKey(),
+        );
+
+        $period = $request->filled('period_id')
+            ? UnitCostPeriod::query()->find((int) $request->input('period_id'))
+            : null;
+
+        if ($period !== null) {
+            return redirect()
+                ->route('calculations.parameters.edit', [
+                    'period' => $period,
+                    'component' => $parameter->component_id ?? 'global',
+                    'unit_id' => $request->input('unit_id', '0'),
+                ])
+                ->with('success', $message);
+        }
 
         return redirect()
-            ->route('calculations.master')
-            ->with('success', "Parameter '{$parameter->name}' dengan variable {".$parameter->formulaKey().'} berhasil dibuat.');
+            ->route('calculations.master', ['section' => 'parameters'])
+            ->with('success', $message);
     }
 
     public function editParameter(UnitCostParameter $parameter)
@@ -155,12 +193,11 @@ class UnitCostMasterController extends Controller
         $data['is_required'] = $request->has('is_required')
             ? $request->boolean('is_required')
             : $parameter->is_required;
-        $data['sort_order'] = (int) ($data['sort_order'] ?? 0);
 
         $parameter->update($data);
 
         return redirect()
-            ->route('calculations.master')
+            ->route('calculations.master', ['section' => 'parameters'])
             ->with('success', "Parameter '{$parameter->name}' berhasil diperbarui.");
     }
 
@@ -168,7 +205,7 @@ class UnitCostMasterController extends Controller
     {
         if ($parameter->entries()->exists() || $parameter->formulaVersions()->exists()) {
             return redirect()
-                ->route('calculations.master')
+                ->route('calculations.master', ['section' => 'parameters'])
                 ->with('error', "Parameter '{$parameter->name}' tidak dapat dihapus karena sudah memiliki nilai atau riwayat formula.");
         }
 
@@ -176,9 +213,24 @@ class UnitCostMasterController extends Controller
         $variable = $parameter->formulaKey();
         $parameter->delete();
 
+        $message = sprintf("Parameter '%s' (kode variabel {%s}) berhasil dihapus.", $name, $variable);
+
         return redirect()
-            ->route('calculations.master')
-            ->with('success', "Parameter '{$name}' (variable {".$variable.'}) berhasil dihapus.');
+            ->route('calculations.master', ['section' => 'parameters'])
+            ->with('success', $message);
+    }
+
+    private function nextParameterSortOrder(?int $componentId): int
+    {
+        $max = UnitCostParameter::query()
+            ->when(
+                $componentId === null,
+                static fn ($query) => $query->whereNull('component_id'),
+                static fn ($query) => $query->where('component_id', $componentId),
+            )
+            ->max('sort_order');
+
+        return ((int) $max) + 10;
     }
 
     /**

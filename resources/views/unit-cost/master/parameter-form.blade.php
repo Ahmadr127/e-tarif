@@ -21,28 +21,34 @@
         'period' => 'Periode',
         'unit_period' => 'Unit + Periode',
     ];
-    $sourceTypes = [
-        'manual' => 'Input Manual',
-        'integration' => 'Integrasi',
-        'derived' => 'Turunan / Formula',
-        'global' => 'Global',
-    ];
+
+    $returnPeriodId = $returnPeriodId ?? null;
+    $returnUnitId = $returnUnitId ?? null;
+    $cancelUrl = $returnPeriodId
+        ? route('calculations.parameters.edit', [
+            'period' => $returnPeriodId,
+            'component' => $parameter->component_id ?? 'global',
+            'unit_id' => $returnUnitId ?? '0',
+        ])
+        : route('calculations.master', ['section' => 'parameters']);
+
+    $codePreview = old('code', $parameter->code) ?: 'kode_parameter';
 @endphp
 
 <div class="w-full max-w-4xl mx-auto space-y-4">
     @include('unit-cost._tabs')
 
     <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-        <a href="{{ route('calculations.master') }}" class="font-semibold text-sp-primary hover:underline">Master</a>
+        <a href="{{ route('calculations.master', ['section' => 'parameters']) }}" class="font-semibold text-sp-primary hover:underline">Master</a>
         <i class="bi bi-chevron-right text-xs"></i>
         <span class="font-semibold text-gray-700">{{ $isEdit ? 'Edit Parameter' : 'Tambah Parameter' }}</span>
     </div>
 
     <x-card padding="false">
         <x-slot name="title">{{ $isEdit ? 'Edit Parameter' : 'Tambah Parameter' }}</x-slot>
-        <x-slot name="subtitle">Variable parameter menjadi variabel global yang dapat dipakai pada formula semua komponen.</x-slot>
+        <x-slot name="subtitle">Kode parameter menjadi variabel global yang dapat dipakai pada formula semua komponen.</x-slot>
         <x-slot name="actions">
-            <a href="{{ route('calculations.master') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
+            <a href="{{ $cancelUrl }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
                 <i class="bi bi-arrow-left"></i> Kembali
             </a>
         </x-slot>
@@ -51,6 +57,11 @@
             @csrf
             @if($isEdit)
                 @method('PUT')
+            @endif
+
+            @if($returnPeriodId)
+                <input type="hidden" name="period_id" value="{{ $returnPeriodId }}">
+                <input type="hidden" name="unit_id" value="{{ $returnUnitId ?? '0' }}">
             @endif
 
             @if($errors->any())
@@ -80,26 +91,18 @@
                     @error('component_id')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
 
-                <div>
+                <div class="md:col-span-2">
                     <label for="code" class="block text-sm font-semibold text-sp-navy mb-1">Kode Parameter <span class="text-red-500">*</span></label>
                     <input type="text" id="code" name="code" required maxlength="120"
                            value="{{ old('code', $parameter->code) }}"
                            placeholder="contoh: biaya_sdm_total"
                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                    <p class="mt-1 text-xs text-gray-500">Kode internal parameter. Harus unik.</p>
-                    @error('code')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
-                </div>
-
-                <div>
-                    <label for="variable" class="block text-sm font-semibold text-sp-navy mb-1">Variable Global <span class="text-red-500">*</span></label>
-                    <input type="text" id="variable" name="variable" required maxlength="120"
-                           value="{{ old('variable', $parameter->variable ?: $parameter->code) }}"
-                           placeholder="contoh: biaya_sdm_total"
-                           class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
                     <p class="mt-1 text-xs text-gray-500">
-                        Dipakai di formula sebagai <code class="font-mono font-semibold text-sp-navy" id="variable-preview">{{ '{'.(old('variable', $parameter->variable ?: $parameter->code) ?: 'variable').'}' }}</code>. Harus unik antar parameter.
+                        Kode ini juga menjadi variabel global. Formula memakai referensi
+                        <code class="font-mono font-semibold text-sp-navy" id="code-preview">{{ '{'.$codePreview.'}' }}</code>.
+                        Kode harus unik dan sebaiknya tidak diubah setelah dipakai.
                     </p>
-                    @error('variable')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    @error('code')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="md:col-span-2">
@@ -142,41 +145,6 @@
                     @error('scope')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
 
-                <div>
-                    <label for="source_type" class="block text-sm font-semibold text-sp-navy mb-1">Sumber Data <span class="text-red-500">*</span></label>
-                    <select id="source_type" name="source_type" required
-                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                        @foreach($sourceTypes as $value => $label)
-                            <option value="{{ $value }}" @selected(old('source_type', $parameter->source_type) === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('source_type')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
-                </div>
-
-                <div class="md:col-span-2">
-                    <label for="source_name" class="block text-sm font-semibold text-sp-navy mb-1">Nama Sumber Data</label>
-                    <input type="text" id="source_name" name="source_name" maxlength="255"
-                           value="{{ old('source_name', $parameter->source_name) }}"
-                           placeholder="contoh: SIMRS, Keuangan, Data Sarana"
-                           class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                    @error('source_name')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
-                </div>
-
-                <div class="md:col-span-2">
-                    <label for="description" class="block text-sm font-semibold text-sp-navy mb-1">Deskripsi</label>
-                    <textarea id="description" name="description" rows="3" maxlength="2000"
-                              class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">{{ old('description', $parameter->description) }}</textarea>
-                    @error('description')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
-                </div>
-
-                <div>
-                    <label for="sort_order" class="block text-sm font-semibold text-sp-navy mb-1">Urutan</label>
-                    <input type="number" id="sort_order" name="sort_order" min="0" max="999999"
-                           value="{{ old('sort_order', $parameter->sort_order ?? 0) }}"
-                           class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                    @error('sort_order')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
-                </div>
-
                 <div class="flex items-end gap-6 pb-2">
                     <div>
                         <input type="hidden" name="is_required" value="0">
@@ -200,15 +168,15 @@
             </div>
 
             <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800">
-                <div class="font-semibold">Variable bersifat global</div>
-                <p class="mt-1">Semua variable parameter aktif dapat dipakai di formula komponen mana pun. Gunakan nama yang stabil karena formula menyimpan referensi nama variable.</p>
+                <div class="font-semibold">Kode parameter = variabel global</div>
+                <p class="mt-1">Semua parameter aktif dapat dipakai di formula komponen mana pun melalui kode masing-masing. Gunakan kode yang stabil karena formula menyimpan referensi kode tersebut.</p>
                 @if($isEdit && ($parameter->entries()->exists() || $parameter->formulaVersions()->exists()))
-                    <p class="mt-2 font-semibold text-amber-800">Parameter ini sudah memiliki nilai atau riwayat formula. Mengubah kode atau variable dapat membuat formula lama menjadi invalid; riwayat formula tetap disimpan.</p>
+                    <p class="mt-2 font-semibold text-amber-800">Parameter ini sudah memiliki nilai atau riwayat formula. Mengubah kode dapat membuat formula lama menjadi invalid; riwayat formula tetap disimpan.</p>
                 @endif
             </div>
 
             <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
-                <a href="{{ route('calculations.master') }}" class="inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">Batal</a>
+                <a href="{{ $cancelUrl }}" class="inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">Batal</a>
                 <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
                     <i class="bi bi-save"></i> Simpan
                 </button>
@@ -221,14 +189,17 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const variableInput = document.getElementById('variable');
-    const preview = document.getElementById('variable-preview');
+    const codeInput = document.getElementById('code');
+    const preview = document.getElementById('code-preview');
 
-    variableInput?.addEventListener('input', function () {
+    function updatePreview() {
         if (preview) {
-            preview.textContent = '{' + (variableInput.value.trim() || 'variable') + '}';
+            preview.textContent = '{' + (codeInput?.value.trim() || 'kode_parameter') + '}';
         }
-    });
+    }
+
+    codeInput?.addEventListener('input', updatePreview);
+    updatePreview();
 });
 </script>
 @endpush

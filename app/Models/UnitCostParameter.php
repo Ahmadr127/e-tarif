@@ -55,19 +55,19 @@ class UnitCostParameter extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (self $parameter): void {
-            if (blank($parameter->variable)) {
-                $parameter->variable = $parameter->code;
-            }
+        // `code` adalah satu-satunya nama variabel global yang dipakai formula.
+        // Kolom `variable` lama tetap disinkronkan agar data historis dan unique index tetap konsisten.
+        static::saving(function (self $parameter): void {
+            $parameter->variable = $parameter->code;
         });
     }
 
     /**
-     * Nama variabel global yang dipakai pada formula.
+     * Kode parameter yang dipakai sebagai variabel global pada formula.
      */
     public function formulaKey(): string
     {
-        return (string) ($this->variable ?: $this->code);
+        return (string) $this->code;
     }
 
     /**
