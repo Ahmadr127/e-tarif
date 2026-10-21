@@ -79,7 +79,7 @@
                                     <tr>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 w-10">No.</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-48">Nama Parameter</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-40">Kode Variabel</th>
+                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-40">Variable Global</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-36">Sumber Data</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-24">Satuan</th>
                                         <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-32">Metode Input</th>
@@ -150,7 +150,7 @@
                                                               placeholder="contoh: {luas_bangunan_tindakan} / {luas_bangunan_keseluruhan}"
                                                               class="formula-input w-full text-xs px-2.5 py-2 border border-gray-300 rounded-md bg-white font-mono leading-5 focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">{{ $formulaText }}</textarea>
                                                     <div class="mt-1 text-[10px] text-gray-500">
-                                                        Gunakan referensi {kode_variabel}. Operator + - * /, kurung, dan fungsi abs, ceil, floor, sqrt, round, min, max.
+                                                        Gunakan referensi {variable} global. Operator + - * /, kurung, dan fungsi abs, ceil, floor, sqrt, round, min, max.
                                                     </div>
                                                 </div>
                                                 <p class="row-error mt-1 text-xs text-red-600 {{ $row['error'] ? '' : 'hidden' }}">{{ $row['error'] }}</p>

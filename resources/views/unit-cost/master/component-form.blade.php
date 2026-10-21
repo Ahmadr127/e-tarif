@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', $component->exists ? 'Edit Komponen Unit Cost' : 'Tambah Komponen Unit Cost')
+@section('title', $componentModel->exists ? 'Edit Komponen Unit Cost' : 'Tambah Komponen Unit Cost')
 
 @section('content')
 @php
-    $isEdit = $component->exists;
+    $isEdit = $componentModel->exists;
     $action = $isEdit
-        ? route('calculations.master.components.update', $component)
+        ? route('calculations.master.components.update', $componentModel)
         : route('calculations.master.components.store');
 @endphp
 
@@ -49,7 +49,7 @@
                 <div>
                     <label for="code" class="block text-sm font-semibold text-sp-navy mb-1">Kode Komponen <span class="text-red-500">*</span></label>
                     <input type="text" id="code" name="code" required maxlength="80"
-                           value="{{ old('code', $component->code) }}"
+                           value="{{ old('code', $componentModel->code) }}"
                            placeholder="contoh: SDM"
                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
                     @error('code')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
@@ -58,7 +58,7 @@
                 <div>
                     <label for="name" class="block text-sm font-semibold text-sp-navy mb-1">Nama Komponen <span class="text-red-500">*</span></label>
                     <input type="text" id="name" name="name" required maxlength="255"
-                           value="{{ old('name', $component->name) }}"
+                           value="{{ old('name', $componentModel->name) }}"
                            placeholder="contoh: Sumber Daya Manusia"
                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
                     @error('name')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
@@ -67,7 +67,7 @@
                 <div>
                     <label for="category" class="block text-sm font-semibold text-sp-navy mb-1">Kategori</label>
                     <input type="text" id="category" name="category" maxlength="80"
-                           value="{{ old('category', $component->category) }}"
+                           value="{{ old('category', $componentModel->category) }}"
                            placeholder="contoh: Biaya"
                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
                     @error('category')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
@@ -76,7 +76,7 @@
                 <div>
                     <label for="sort_order" class="block text-sm font-semibold text-sp-navy mb-1">Urutan</label>
                     <input type="number" id="sort_order" name="sort_order" min="0" max="999999"
-                           value="{{ old('sort_order', $component->sort_order ?? 0) }}"
+                           value="{{ old('sort_order', $componentModel->sort_order ?? 0) }}"
                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
                     @error('sort_order')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
@@ -84,7 +84,7 @@
                 <div class="md:col-span-2">
                     <label for="description" class="block text-sm font-semibold text-sp-navy mb-1">Deskripsi</label>
                     <textarea id="description" name="description" rows="3" maxlength="2000"
-                              class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">{{ old('description', $component->description) }}</textarea>
+                              class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">{{ old('description', $componentModel->description) }}</textarea>
                     @error('description')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                 </div>
 
@@ -92,7 +92,7 @@
                     <input type="hidden" name="is_active" value="0">
                     <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
                         <input type="checkbox" name="is_active" value="1"
-                               @checked(old('is_active', $component->is_active ?? true))
+                               @checked(old('is_active', $componentModel->is_active ?? true))
                                class="h-4 w-4 rounded border-gray-300 text-sp-primary focus:ring-sp-primary/30">
                         Aktif
                     </label>

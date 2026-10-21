@@ -19,11 +19,18 @@ hanya untuk tampilan.
      error, status kelengkapan, dan waktu perubahan terakhir.
    - Konteks unit dipilih di halaman ini; entry unit disimpan terpisah.
 3. **Parameter** (`/calculations/periods/{period}/components/{component}`)
-   - Tabel parameter: No., Nama Parameter, Kode Variabel, Sumber Data, Satuan,
+   - Tabel parameter: No., Nama Parameter, Variable Global, Sumber Data, Satuan,
      Metode Input, Nilai/Rumus, Hasil, Status.
    - Metode input: **Input Nilai** atau **Input Rumus**.
    - Satu tombol utama: **Simpan**. Tidak ada tombol Hitung/Calculate.
    - Preview diperbarui otomatis dengan debounce dan endpoint backend.
+4. **Master** (`/calculations/master`)
+   - CRUD komponen dan parameter master.
+   - Setiap parameter memiliki `code` internal dan `variable` global yang unik.
+   - Variable global dipakai sebagai referensi `{variable}` pada formula dan
+     dapat dipakai lintas komponen.
+   - Komponen yang masih memiliki parameter tidak dapat dihapus; parameter yang
+     sudah memiliki entry atau riwayat formula juga tidak dapat dihapus.
 
 ## Skema Database
 
@@ -32,7 +39,7 @@ Migration: `2026_10_21_100000_create_unit_cost_tables.php`.
 | Tabel | Fungsi |
 | --- | --- |
 | `unit_cost_components` | Master komponen. |
-| `unit_cost_parameters` | Master parameter/variabel, termasuk tipe, satuan, scope, sumber, wajib/opsional. |
+| `unit_cost_parameters` | Master parameter: `code` internal, `variable` global unik, tipe, satuan, scope, sumber, wajib/opsional. |
 | `unit_cost_periods` | Periode kalkulasi dengan status `draft`, `active`, `closed`. |
 | `unit_cost_formula_versions` | Riwayat versi ekspresi formula per parameter+periode. |
 | `unit_cost_parameter_entries` | Konfigurasi periode+parameter+unit: metode, nilai, teks formula, versi formula yang dipakai, hasil, status, error. |
@@ -44,7 +51,7 @@ constraint.
 
 ## Aturan Formula
 
-- Referensi memakai `{kode_variabel}`.
+- Referensi memakai `{variable}` milik parameter, bukan kode internal.
 - Operator: `+ - * /`, tanda kurung, konstanta.
 - Fungsi: `abs`, `ceil`, `floor`, `sqrt`, `round`, `min`, `max`.
 - Tidak ada `eval()`; parser hanya menerima token yang diizinkan.
@@ -78,7 +85,7 @@ constraint.
 | Permission | Fungsi |
 | --- | --- |
 | `manage_unit_cost_periods` | Kelola periode. |
-| `manage_unit_cost_masters` | Akses master komponen/parameter. |
+| `manage_unit_cost_masters` | CRUD master komponen/parameter dan variable global. |
 | `edit_unit_cost_parameters` | Ubah nilai/rumus parameter. |
 | `view_unit_cost_results` | Lihat form, hasil, dan riwayat. |
 | `approve_unit_cost_results` | Setujui hasil dan buat snapshot. |
@@ -101,8 +108,10 @@ Validasi permission dilakukan di backend, bukan hanya menyembunyikan tombol.
 
 - Migration lama calculation engine (`2026_10_21_000001`–`000003`) dihapus dari
   source karena alur dibangun ulang.
-- Migration baru: `2026_10_21_100000_create_unit_cost_tables.php` dan
-  `2026_10_21_100001_add_unit_cost_permissions.php`.
+- Migration baru: `2026_10_21_100000_create_unit_cost_tables.php`,
+  `2026_10_21_100001_add_unit_cost_permissions.php`, dan
+  `2026_10_21_100002_add_variable_to_unit_cost_parameters.php` (menambah
+  `variable` unik dan mengisi nilainya dari `code` untuk data lama).
 - Tabel lama yang sudah terlanjur ada di database lokal tidak dipakai lagi dan
   tidak dihapus otomatis untuk menghindari kehilangan data.
 - **Migration/deployment production belum dijalankan dan menunggu otorisasi.**
@@ -112,15 +121,17 @@ Validasi permission dilakukan di backend, bukan hanya menyembunyikan tombol.
 ```bash
 php artisan test tests/Feature/UnitCostPeriodTest.php
 php artisan test tests/Feature/UnitCostParameterTest.php
+php artisan test tests/Feature/UnitCostMasterTest.php
 php artisan test tests/Unit/UnitCost/FormulaParserTest.php
 php artisan test --filter=UnitCost
 ```
 
-Cakupan test: CRUD/aktivasi/penutupan periode, duplikasi, permission, form
-parameter, input nilai, formula bertingkat, formula invalid, referensi tidak
-dikenal, siklus, pembagian nol, input kurang, isolasi periode/unit, perubahan
-metode, preview tanpa persist, evaluasi terdampak, rollback transaksi, snapshot
-approval, dan tidak adanya route/tombol Hitung.
+Cakupan test: CRUD/aktivasi/penutupan periode, CRUD komponen/parameter master,
+variable global unik, formula memakai variable (bukan kode internal), duplikasi,
+permission, form parameter, input nilai, formula bertingkat, formula invalid,
+referensi tidak dikenal, siklus, pembagian nol, input kurang, isolasi
+periode/unit, perubahan metode, preview tanpa persist, evaluasi terdampak,
+rollback transaksi, snapshot approval, dan tidak adanya route/tombol Hitung.
 
 ## Keputusan Bisnis yang Masih Terbuka
 

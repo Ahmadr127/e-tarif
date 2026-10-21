@@ -78,7 +78,7 @@ class UnitCostPeriodTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('Nama Parameter')
-            ->assertSee('Kode Variabel')
+            ->assertSee('Variable Global')
             ->assertSee('Metode Input')
             ->assertSee('Input Nilai')
             ->assertSee('Input Rumus')

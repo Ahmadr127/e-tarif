@@ -50,7 +50,7 @@ class UnitCostMasterController extends Controller
     public function createComponent()
     {
         return view('unit-cost.master.component-form', [
-            'component' => new UnitCostComponent([
+            'componentModel' => new UnitCostComponent([
                 'is_active' => true,
                 'sort_order' => 0,
             ]),
@@ -73,7 +73,7 @@ class UnitCostMasterController extends Controller
     public function editComponent(UnitCostComponent $component)
     {
         return view('unit-cost.master.component-form', [
-            'component' => $component,
+            'componentModel' => $component,
         ]);
     }
 

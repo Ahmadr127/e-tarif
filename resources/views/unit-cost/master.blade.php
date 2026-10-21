@@ -223,7 +223,7 @@
         <x-slot name="title">Riwayat Versi Formula</x-slot>
         <x-slot name="subtitle">Setiap perubahan teks rumus pada periode membuat versi baru. Versi lama tidak diubah.</x-slot>
 
-        <x-table :columns="['No', 'Periode', 'Parameter', 'Variable', 'Versi', 'Ekspresi', 'Dibuat']"
+        <x-table :columns="['No', 'Periode', 'Parameter', 'Variable Saat Ini', 'Versi', 'Ekspresi', 'Dibuat']"
                  :pagination="$formulaVersions" empty="Belum ada versi formula."
                  class="border-0 rounded-none shadow-none">
             @foreach($formulaVersions as $version)
