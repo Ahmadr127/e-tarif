@@ -36,8 +36,6 @@
 @endphp
 
 <div class="w-full max-w-4xl mx-auto space-y-4">
-    @include('unit-cost._tabs')
-
     <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
         <a href="{{ route('calculations.master', ['section' => 'parameters']) }}" class="font-semibold text-sp-primary hover:underline">Master</a>
         <i class="bi bi-chevron-right text-xs"></i>

@@ -19,8 +19,7 @@
 @endphp
 
 <div class="w-full mx-auto space-y-4">
-    @include('unit-cost._tabs')
-    @include('unit-cost.master._tabs', ['section' => $section, 'counts' => $counts])
+    @include('unit-cost.master._filters')
 
     @if($section === 'components')
         <x-card padding="false">

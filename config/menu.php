@@ -9,7 +9,9 @@
 | Setiap grup punya 'title' + 'menus'.
 | Item menu bisa berupa:
 |   - Link tunggal  : 'permission' (string) + 'route' + 'route_pattern' + 'icon'
-|   - Dropdown      : 'permissions' (array) + 'children' (array link tunggal)
+|   - Dropdown      : 'children' (array link tunggal), tampil jika salah satu child bisa diakses
+|
+| Setiap item hanya memakai satu 'permission' (tidak ada 'permissions' array).
 |
 | 'route_pattern' dipakai untuk menentukan status aktif (request()->routeIs).
 | Ikon memakai Font Awesome tanpa prefix, contoh: 'fa-tachometer-alt'.
@@ -35,7 +37,6 @@ return [
             [
                 'label' => 'Pengguna & Akses',
                 'icon' => 'bi-person-fill-gear',
-                'permissions' => ['manage_users', 'manage_roles', 'manage_permissions'],
                 'children' => [
                     [
                         'label' => 'Users',
@@ -68,7 +69,6 @@ return [
             [
                 'label' => 'Organisasi',
                 'icon' => 'bi-buildings-fill',
-                'permissions' => ['manage_organization_types', 'manage_organization_units'],
                 'children' => [
                     [
                         'label' => 'Tipe Organisasi',
@@ -92,38 +92,89 @@ return [
         // 'title' => 'Management Tarif',
         'menus' => [
             [
-                'label' => 'Daftar Tarif',
-                'icon' => 'bi-cash-coin',
-                'route' => 'tarifs.index',
-                'route_pattern' => 'tarifs.*',
-                'permission' => 'manage_tarifs',
-            ],
-            [
-                'label' => 'Kalkulasi Unit Cost',
-                'icon' => 'bi-calculator',
-                'route' => 'calculations.index',
-                'route_pattern' => 'calculations.*',
-                'permissions' => ['manage_unit_cost_periods', 'manage_calculations'],
-            ],
-            [
-                'label' => 'Buku Tarif Admin',
-                'icon' => 'bi-journal-bookmark-fill',
-                'route' => 'tarif-units.index',
-                'route_pattern' => 'tarif-units.*',
-                'permission' => 'manage_tarif_units',
-            ],
-            [
-                'label' => 'Buku Tarif',
-                'icon' => 'bi-journal-bookmark',
-                'route' => 'buku-tarif-saya.index',
-                'route_pattern' => 'buku-tarif-saya.*',
-                'permission' => 'manage_my_tarif_unit',
-            ],
-            [
-                'label' => 'Master & Tarif',
-                'icon' => 'bi-cash-coin',
-                'permissions' => ['manage_tarif_masters', 'manage_tarifs', 'manage_helpers'],
+                'label' => 'Tarif',
+                'icon' => 'bi-receipt',
                 'children' => [
+                    [
+                        'label' => 'Daftar Tarif',
+                        'icon' => 'bi-cash-coin',
+                        'route' => 'tarifs.index',
+                        'route_pattern' => 'tarifs.*',
+                        'permission' => 'manage_tarifs',
+                    ],
+                    [
+                        'label' => 'Buku Tarif Admin',
+                        'icon' => 'bi-journal-bookmark-fill',
+                        'route' => 'tarif-units.index',
+                        'route_pattern' => 'tarif-units.*',
+                        'permission' => 'manage_tarif_units',
+                    ],
+                    [
+                        'label' => 'Buku Tarif',
+                        'icon' => 'bi-journal-bookmark',
+                        'route' => 'buku-tarif-saya.index',
+                        'route_pattern' => 'buku-tarif-saya.*',
+                        'permission' => 'manage_my_tarif_unit',
+                    ],
+                ],
+            ],
+            [
+                'label' => 'Unit Cost',
+                'icon' => 'bi-calculator',
+                'children' => [
+                    [
+                        'label' => 'Periode',
+                        'icon' => 'bi-calendar3',
+                        'route' => 'calculations.index',
+                        'route_pattern' => ['calculations.index', 'calculations.periods.*', 'calculations.parameters.*'],
+                        'permission' => 'manage_unit_cost_periods',
+                    ],
+                    // [
+                    //     'label' => 'Master',
+                    //     'icon' => 'bi-sliders',
+                    //     'route' => 'calculations.master',
+                    //     'route_pattern' => 'calculations.master*',
+                    //     'permission' => 'manage_unit_cost_masters',
+                    // ],
+                    [
+                        'label' => 'Riwayat Hasil',
+                        'icon' => 'bi-clock-history',
+                        'route' => 'calculations.history.index',
+                        'route_pattern' => 'calculations.history.*',
+                        'permission' => 'view_unit_cost_results',
+                    ],
+                ],
+            ],
+            [
+                'label' => 'Master',
+                'icon' => 'bi-cash-coin',
+                'children' => [
+                    [
+                        'label' => 'Komponen',
+                        'icon' => 'bi-diagram-3-fill',
+                        'route' => 'calculations.master',
+                        'route_pattern' => ['calculations.master', 'calculations.master.components.*'],
+                        'query' => ['section' => ['components', null]],
+                        'permission' => 'manage_unit_cost_components',
+                    ],
+                    [
+                        'label' => 'Parameter',
+                        'icon' => 'bi-list-ul',
+                        'route' => 'calculations.master',
+                        'params' => ['section' => 'parameters'],
+                        'route_pattern' => ['calculations.master', 'calculations.master.parameters.*'],
+                        'query' => ['section' => 'parameters'],
+                        'permission' => 'manage_unit_cost_parameters',
+                    ],
+                    [
+                        'label' => 'Riwayat Formula',
+                        'icon' => 'bi-clock-history',
+                        'route' => 'calculations.master',
+                        'params' => ['section' => 'formula-history'],
+                        'route_pattern' => 'calculations.master',
+                        'query' => ['section' => 'formula-history'],
+                        'permission' => 'view_unit_cost_formula_history',
+                    ],
                     [
                         'label' => 'Jenis Tarif',
                         'icon' => 'bi-tags-fill',

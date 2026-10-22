@@ -15,8 +15,6 @@
 @endphp
 
 <div class="w-full mx-auto space-y-4">
-    @include('unit-cost._tabs')
-
     <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
         <a href="{{ route('calculations.index') }}" class="font-semibold text-sp-primary hover:underline">Periode</a>
         <i class="bi bi-chevron-right text-xs"></i>
@@ -38,7 +36,7 @@
                 <x-slot name="actions">
                     <x-variable-help-modal :parameters="$allParameters" />
 
-                    @if(auth()->user()?->hasPermission('manage_unit_cost_masters') || auth()->user()?->hasPermission('manage_calculations'))
+                    @if(auth()->user()?->hasPermission('manage_unit_cost_parameters') || auth()->user()?->hasPermission('manage_unit_cost_masters') || auth()->user()?->hasPermission('manage_calculations'))
                         <a href="{{ route('calculations.master.parameters.create', [
                                 'component_id' => $componentModel?->id,
                                 'period_id' => $period->id,

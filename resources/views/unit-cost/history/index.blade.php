@@ -4,8 +4,6 @@
 
 @section('content')
 <div class="w-full mx-auto space-y-4">
-    @include('unit-cost._tabs')
-
     <x-card padding="false">
         <x-slot name="title">Riwayat Hasil Disetujui</x-slot>
         <x-slot name="subtitle">Snapshot resmi menyimpan nilai, rumus, versi formula, dan hasil pada saat persetujuan.</x-slot>

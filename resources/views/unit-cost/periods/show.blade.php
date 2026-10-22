@@ -22,8 +22,6 @@
 @endphp
 
 <div class="w-full mx-auto space-y-4">
-    @include('unit-cost._tabs')
-
     <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
         <a href="{{ route('calculations.index') }}" class="font-semibold text-sp-primary hover:underline">Periode</a>
         <i class="bi bi-chevron-right text-xs"></i>
@@ -55,24 +53,6 @@
             @endif
         </x-slot>
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 pt-4">
-            <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                <div class="text-xs font-semibold text-gray-500">Komponen</div>
-                <div class="mt-1 text-2xl font-bold text-gray-800">{{ (int) ($periodStats['components'] ?? 0) }}</div>
-            </div>
-            <div class="rounded-lg border border-gray-200 bg-blue-50 px-4 py-3">
-                <div class="text-xs font-semibold text-blue-600">Parameter Terkonfigurasi</div>
-                <div class="mt-1 text-2xl font-bold text-blue-800">{{ (int) ($periodStats['configured'] ?? 0) }} / {{ (int) ($periodStats['total'] ?? 0) }}</div>
-            </div>
-            <div class="rounded-lg border border-gray-200 bg-amber-50 px-4 py-3">
-                <div class="text-xs font-semibold text-amber-700">Belum Lengkap</div>
-                <div class="mt-1 text-2xl font-bold text-amber-800">{{ (int) ($periodStats['incomplete'] ?? 0) }}</div>
-            </div>
-            <div class="rounded-lg border border-gray-200 bg-red-50 px-4 py-3">
-                <div class="text-xs font-semibold text-red-700">Error</div>
-                <div class="mt-1 text-2xl font-bold text-red-800">{{ (int) ($periodStats['invalid'] ?? 0) }}</div>
-            </div>
-        </div>
 
         <div class="px-4 py-3 border-b border-gray-100 bg-white">
             <form method="GET" action="{{ route('calculations.periods.show', $period) }}" class="flex flex-col sm:flex-row gap-3 items-end">

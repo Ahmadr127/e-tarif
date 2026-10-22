@@ -14,8 +14,6 @@
 @endphp
 
 <div class="w-full mx-auto space-y-4">
-    @include('unit-cost._tabs')
-
     <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
         <a href="{{ route('calculations.history.index') }}" class="font-semibold text-sp-primary hover:underline">Riwayat Hasil</a>
         <i class="bi bi-chevron-right text-xs"></i>

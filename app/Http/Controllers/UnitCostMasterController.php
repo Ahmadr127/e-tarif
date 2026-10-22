@@ -22,45 +22,124 @@ class UnitCostMasterController extends Controller
             $section = 'components';
         }
 
-        $components = collect();
-        $parameters = collect();
+        $perPage = (int) $request->input('per_page', 25);
+
+        if (! in_array($perPage, [5, 10, 25, 50, 100], true)) {
+            $perPage = 25;
+        }
+
+        $filters = [
+            'search' => trim((string) $request->input('search', '')),
+            'category' => trim((string) $request->input('category', '')),
+            'status' => (string) $request->input('status', ''),
+            'component' => (string) $request->input('component', ''),
+            'scope' => (string) $request->input('scope', ''),
+            'period' => (string) $request->input('period', ''),
+            'date_from' => (string) $request->input('date_from', ''),
+            'date_to' => (string) $request->input('date_to', ''),
+        ];
+
+        $components = null;
+        $parameters = null;
         $formulaVersions = null;
+        $categories = collect();
+        $filterComponents = collect();
+        $periodOptions = collect();
 
         if ($section === 'components') {
+            $categories = UnitCostComponent::query()
+                ->whereNotNull('category')
+                ->where('category', '<>', '')
+                ->distinct()
+                ->orderBy('category')
+                ->pluck('category');
+
             $components = UnitCostComponent::query()
                 ->withCount([
                     'parameters' => fn ($query) => $query->active(),
                 ])
+                ->when($filters['search'] !== '', function ($query) use ($filters): void {
+                    $term = '%'.$filters['search'].'%';
+                    $query->where(function ($query) use ($term): void {
+                        $query->where('code', 'like', $term)
+                            ->orWhere('name', 'like', $term)
+                            ->orWhere('description', 'like', $term);
+                    });
+                })
+                ->when($filters['category'] !== '', fn ($query) => $query->where('category', $filters['category']))
+                ->when($filters['status'] !== '', fn ($query) => $query->where('is_active', $filters['status'] === 'active'))
                 ->orderBy('sort_order')
                 ->orderBy('name')
-                ->get();
+                ->paginate($perPage)
+                ->withQueryString();
         } elseif ($section === 'parameters') {
+            $filterComponents = $this->componentsForForm();
+
             $parameters = UnitCostParameter::query()
                 ->with('component')
                 ->withCount(['entries', 'formulaVersions'])
+                ->when($filters['search'] !== '', function ($query) use ($filters): void {
+                    $term = '%'.$filters['search'].'%';
+                    $query->where(function ($query) use ($term): void {
+                        $query->where('code', 'like', $term)
+                            ->orWhere('name', 'like', $term);
+                    });
+                })
+                ->when($filters['component'] !== '', function ($query) use ($filters): void {
+                    if ($filters['component'] === 'global') {
+                        $query->whereNull('component_id');
+                    } elseif (ctype_digit($filters['component'])) {
+                        $query->where('component_id', (int) $filters['component']);
+                    }
+                })
+                ->when($filters['scope'] !== '', fn ($query) => $query->where('scope', $filters['scope']))
+                ->when($filters['status'] !== '', fn ($query) => $query->where('is_active', $filters['status'] === 'active'))
                 ->orderBy('component_id')
                 ->orderBy('sort_order')
                 ->orderBy('code')
-                ->get();
+                ->paginate($perPage)
+                ->withQueryString();
         } else {
+            $periodOptions = UnitCostPeriod::query()
+                ->whereIn('id', UnitCostFormulaVersion::query()->select('period_id')->whereNotNull('period_id'))
+                ->orderByDesc('period_year')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'period_year']);
+
             $formulaVersions = UnitCostFormulaVersion::query()
                 ->with(['parameter', 'period'])
+                ->when($filters['search'] !== '', function ($query) use ($filters): void {
+                    $term = '%'.$filters['search'].'%';
+                    $query->where(function ($query) use ($term): void {
+                        $query->where('expression', 'like', $term)
+                            ->orWhereHas('parameter', function ($query) use ($term): void {
+                                $query->where('name', 'like', $term)
+                                    ->orWhere('code', 'like', $term);
+                            });
+                    });
+                })
+                ->when($filters['period'] !== '', function ($query) use ($filters): void {
+                    if (ctype_digit($filters['period'])) {
+                        $query->where('period_id', (int) $filters['period']);
+                    }
+                })
+                ->when($filters['date_from'] !== '' && strtotime($filters['date_from']) !== false, fn ($query) => $query->whereDate('created_at', '>=', $filters['date_from']))
+                ->when($filters['date_to'] !== '' && strtotime($filters['date_to']) !== false, fn ($query) => $query->whereDate('created_at', '<=', $filters['date_to']))
                 ->latest('id')
-                ->paginate(50);
+                ->paginate($perPage)
+                ->withQueryString();
         }
-
-        $counts = [
-            'components' => UnitCostComponent::query()->count(),
-            'parameters' => UnitCostParameter::query()->count(),
-            'formula_history' => UnitCostFormulaVersion::query()->count(),
-        ];
 
         return view('unit-cost.master', [
             'section' => $section,
-            'counts' => $counts,
+            'perPage' => $perPage,
+            'filters' => $filters,
             'components' => $components,
             'parameters' => $parameters,
             'formulaVersions' => $formulaVersions,
+            'categories' => $categories,
+            'filterComponents' => $filterComponents,
+            'periodOptions' => $periodOptions,
         ]);
     }
 

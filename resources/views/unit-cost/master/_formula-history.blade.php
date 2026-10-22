@@ -1,5 +1,6 @@
 <x-table :columns="['No', 'Periode', 'Parameter', 'Variable Saat Ini', 'Versi', 'Ekspresi', 'Dibuat']"
-         :pagination="$formulaVersions" empty="Belum ada versi formula."
+         :pagination="$formulaVersions" empty="Belum ada versi formula yang cocok."
+         :perPage="$perPage"
          class="border-0 rounded-none shadow-none">
     @foreach($formulaVersions as $version)
         <tr class="hover:bg-gray-50">

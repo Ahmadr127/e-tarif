@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="w-full max-w-4xl mx-auto space-y-4">
-    @include('unit-cost._tabs')
     @include('unit-cost.periods._form')
 </div>
 @endsection

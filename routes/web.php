@@ -152,10 +152,12 @@ Route::middleware('auth')->group(function () {
             ->name('calculations.parameters.preview');
     });
 
-    Route::middleware('permission:manage_unit_cost_masters|manage_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost_components|manage_unit_cost_parameters|view_unit_cost_formula_history|manage_unit_cost_masters|manage_calculations')->group(function () {
         Route::get('calculations/master', [UnitCostMasterController::class, 'index'])
             ->name('calculations.master');
+    });
 
+    Route::middleware('permission:manage_unit_cost_components|manage_unit_cost_masters|manage_calculations')->group(function () {
         Route::get('calculations/master/components/create', [UnitCostMasterController::class, 'createComponent'])
             ->name('calculations.master.components.create');
         Route::post('calculations/master/components', [UnitCostMasterController::class, 'storeComponent'])
@@ -169,7 +171,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('calculations/master/components/{component}', [UnitCostMasterController::class, 'destroyComponent'])
             ->whereNumber('component')
             ->name('calculations.master.components.destroy');
+    });
 
+    Route::middleware('permission:manage_unit_cost_parameters|manage_unit_cost_masters|manage_calculations')->group(function () {
         Route::get('calculations/master/parameters/create', [UnitCostMasterController::class, 'createParameter'])
             ->name('calculations.master.parameters.create');
         Route::post('calculations/master/parameters', [UnitCostMasterController::class, 'storeParameter'])

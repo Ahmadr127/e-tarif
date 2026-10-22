@@ -3,7 +3,7 @@
         <h3 class="text-sm font-semibold text-gray-800">Daftar Parameter</h3>
         <p class="text-xs text-gray-500">Kode parameter menjadi variabel global yang direferensikan di formula, misalnya {{ '{persentase_luas_bangunan}' }}.</p>
     </div>
-    <span class="text-xs text-gray-500">{{ $parameters->count() }} parameter</span>
+    <span class="text-xs text-gray-500">{{ $parameters->total() }} parameter</span>
 </div>
 
 <div class="overflow-x-auto border border-gray-200 rounded-lg">
@@ -25,7 +25,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($parameters as $parameter)
                 <tr class="hover:bg-gray-50 align-top">
-                    <td class="px-3 py-2.5 text-center text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-3 py-2.5 text-center text-gray-500">{{ ($parameters->firstItem() ?? 1) + $loop->index }}</td>
                     <td class="px-3 py-2.5">
                         <div class="text-sm font-semibold text-gray-800">{{ $parameter->component?->name ?? 'Parameter Global' }}</div>
                         <div class="font-mono text-[11px] text-gray-500">{{ $parameter->component?->code ?? 'GLOBAL' }}</div>
@@ -77,3 +77,5 @@
         </tbody>
     </table>
 </div>
+
+@include('unit-cost.master._pagination', ['pagination' => $parameters, 'perPage' => $perPage])

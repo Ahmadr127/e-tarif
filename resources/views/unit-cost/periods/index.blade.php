@@ -17,8 +17,6 @@
 @endphp
 
 <div class="w-full mx-auto space-y-4">
-    @include('unit-cost._tabs')
-
     <x-card padding="false">
         <x-slot name="title">Periode Kalkulasi Unit Cost</x-slot>
         <x-slot name="subtitle">Pilih periode, buka komponen, lalu isi nilai atau rumus parameter</x-slot>

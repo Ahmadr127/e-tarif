@@ -59,18 +59,18 @@
             <nav class="flex-1 overflow-y-auto sidebar-scroll px-6 pt-6">
                 @php
                     $menuGroups = config('menu');
-                    $canAccess = function ($item) {
-                        if (isset($item['permission'])) {
-                            return auth()->user()->hasPermission($item['permission']);
-                        }
-                        if (isset($item['permissions'])) {
-                            foreach ($item['permissions'] as $p) {
-                                if (auth()->user()->hasPermission($p)) {
+                    $canAccess = function ($item) use (&$canAccess) {
+                        // Dropdown tampil jika minimal satu child-nya bisa diakses.
+                        if (isset($item['children'])) {
+                            foreach ($item['children'] as $child) {
+                                if ($canAccess($child)) {
                                     return true;
                                 }
                             }
                         }
-                        return false;
+                        return isset($item['permission'])
+                            ? auth()->user()->hasPermission($item['permission'])
+                            : false;
                     };
                 @endphp
 
@@ -82,8 +82,25 @@
                         @foreach($visible as $item)
                             @if(isset($item['children']))
                                 @php
-                                    $childPatterns = array_column($item['children'], 'route_pattern');
-                                    $isOpen = request()->routeIs($childPatterns);
+                                    $childActive = [];
+                                    foreach ($item['children'] as $index => $child) {
+                                        $patterns = (array) ($child['route_pattern'] ?? $child['route']);
+                                        $active = request()->routeIs($patterns);
+
+                                        // Jika item memakai query string (mis. ?section=...), cocokkan
+                                        // hanya saat berada tepat di route item tersebut.
+                                        if ($active && !empty($child['query']) && request()->routeIs($child['route'])) {
+                                            foreach ($child['query'] as $key => $expected) {
+                                                if (!in_array(request()->query($key), (array) $expected, true)) {
+                                                    $active = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        $childActive[$index] = $active;
+                                    }
+                                    $isOpen = in_array(true, $childActive, true);
                                 @endphp
                                 <div class="mb-1" x-data="{ open: {{ $isOpen ? 'true' : 'false' }} }">
                                     <button @click="open = !open" 
@@ -105,8 +122,8 @@
                                          class="sidebar-submenu mt-1 space-y-0.5">
                                         @foreach($item['children'] as $child)
                                             @if($canAccess($child))
-                                            <a href="{{ route($child['route']) }}" 
-                                               class="{{ request()->routeIs($child['route_pattern']) ? 'active' : '' }}"
+                                            <a href="{{ route($child['route'], $child['params'] ?? []) }}" 
+                                               class="{{ !empty($childActive[$loop->index]) ? 'active' : '' }}"
                                                title="{{ $child['label'] }}">
                                                 <i class="bi {{ $child['icon'] }} sidebar-icon"></i>
                                                 <span class="sidebar-text">{{ $child['label'] }}</span>

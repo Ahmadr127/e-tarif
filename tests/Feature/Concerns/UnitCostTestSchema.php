@@ -58,6 +58,9 @@ trait UnitCostTestSchema
         $permissions = [
             'manage_unit_cost_periods',
             'manage_unit_cost_masters',
+            'manage_unit_cost_components',
+            'manage_unit_cost_parameters',
+            'view_unit_cost_formula_history',
             'edit_unit_cost_parameters',
             'view_unit_cost_results',
             'approve_unit_cost_results',

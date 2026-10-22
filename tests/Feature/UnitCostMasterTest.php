@@ -194,7 +194,7 @@ class UnitCostMasterTest extends TestCase
         $this->assertSame($initialSortOrder, $parameter->sort_order);
 
         $this->actingAs($this->unitCostUser)
-            ->get(route('calculations.master', ['section' => 'parameters']))
+            ->get(route('calculations.master', ['section' => 'parameters', 'search' => 'test_parameter_code_updated']))
             ->assertOk()
             ->assertSee('{test_parameter_code_updated}');
 

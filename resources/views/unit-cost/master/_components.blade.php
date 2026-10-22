@@ -3,7 +3,7 @@
         <h3 class="text-sm font-semibold text-gray-800">Daftar Komponen</h3>
         <p class="text-xs text-gray-500">Komponen mengelompokkan parameter unit cost. Komponen aktif tampil pada halaman periode.</p>
     </div>
-    <span class="text-xs text-gray-500">{{ $components->count() }} komponen</span>
+    <span class="text-xs text-gray-500">{{ $components->total() }} komponen</span>
 </div>
 
 <div class="overflow-x-auto border border-gray-200 rounded-lg">
@@ -22,7 +22,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($components as $component)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2.5 text-center text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-3 py-2.5 text-center text-gray-500">{{ ($components->firstItem() ?? 1) + $loop->index }}</td>
                     <td class="px-3 py-2.5 font-mono text-xs font-semibold text-sp-navy break-all">{{ $component->code }}</td>
                     <td class="px-3 py-2.5">
                         <div class="font-semibold text-gray-800">{{ $component->name }}</div>
@@ -65,3 +65,5 @@
         </tbody>
     </table>
 </div>
+
+@include('unit-cost.master._pagination', ['pagination' => $components, 'perPage' => $perPage])
