@@ -8,6 +8,7 @@ use App\Models\UnitCostParameterEntry;
 use App\Models\UnitCostPeriod;
 use App\Models\UnitCostResultSnapshot;
 use App\Services\UnitCost\ParameterEvaluationService;
+use App\Services\UnitCost\UnitCostOfficialReportService;
 use Illuminate\Support\Facades\DB;
 use Tests\Feature\Concerns\UnitCostTestSchema;
 use Tests\TestCase;
@@ -202,6 +203,90 @@ class UnitCostParameterTest extends TestCase
         $this->assertSame(30.0, $evaluation->values['default_b']);
         $this->assertSame('value', $evaluation->byCode('default_a')['source']);
         $this->assertDatabaseCount('unit_cost_parameter_entries', 1);
+    }
+
+    public function test_official_report_service_builds_grouped_parameter_results(): void
+    {
+        $component = $this->makeComponent();
+        $a = $this->makeParameter($component, 'report_a', 'Report A', sortOrder: 10);
+        $b = $this->makeParameter($component, 'report_b', 'Report B', sortOrder: 20, sourceType: 'derived');
+        $period = $this->makePeriod();
+
+        $this->save($period, $this->unitCostUnit, $component, [
+            $a->id => ['input_type' => 'value', 'input_value' => 10],
+            $b->id => ['input_type' => 'formula', 'formula_text' => '{report_a} * 2'],
+        ])->assertRedirect();
+
+        $report = app(UnitCostOfficialReportService::class)->build($period, $this->unitCostUnit);
+
+        $this->assertSame($period->id, $report['period']->id);
+        $this->assertSame($this->unitCostUnit->id, $report['unit']->id);
+        $this->assertSame(2, $report['summary']['total']);
+        $this->assertSame(2, $report['summary']['valid']);
+        $this->assertCount(1, $report['groups']);
+
+        $group = $report['groups'][0];
+        $this->assertSame($component->id, $group['component']->id);
+        $this->assertSame(2, $group['summary']['total']);
+        $this->assertSame(['report_a', 'report_b'], array_column($group['rows'], 'code'));
+        $this->assertSame(20.0, $group['rows'][1]['result_value']);
+    }
+
+    public function test_official_report_only_includes_components_assigned_to_unit(): void
+    {
+        $assignedComponent = $this->makeComponent('REPORT-ASSIGNED');
+        $otherComponent = $this->makeComponent('REPORT-OTHER');
+
+        $this->makeParameter($assignedComponent, 'assigned_param', 'Assigned', sortOrder: 10);
+        $this->makeParameter($otherComponent, 'other_param', 'Other', sortOrder: 20);
+
+        $period = $this->makePeriod();
+        $this->unitCostUnit->unitCostComponents()->attach($assignedComponent->id);
+
+        $service = app(UnitCostOfficialReportService::class);
+        $componentIds = $service->componentIdsForUnit($this->unitCostUnit);
+        $report = $service->build($period, $this->unitCostUnit, $componentIds);
+
+        $this->assertSame([$assignedComponent->id], $componentIds);
+        $this->assertCount(1, $report['groups']);
+        $this->assertSame($assignedComponent->id, $report['groups'][0]['component']->id);
+        $this->assertSame(['assigned_param'], array_column($report['groups'][0]['rows'], 'code'));
+    }
+
+    public function test_scoped_user_form_lists_all_formulas_in_one_modal(): void
+    {
+        $component = $this->makeComponent('FORMULA-MODAL');
+        $value = $this->makeParameter($component, 'modal_value', 'Nilai Dasar', sortOrder: 10);
+        $first = $this->makeParameter($component, 'modal_first', 'Rumus Pertama', sortOrder: 20, sourceType: 'derived');
+        $second = $this->makeParameter($component, 'modal_second', 'Rumus Kedua', sortOrder: 30, sourceType: 'derived');
+        $period = $this->makePeriod();
+
+        $this->unitCostUnit->unitCostComponents()->attach($component->id);
+
+        $this->save($period, $this->unitCostUnit, $component, [
+            $value->id => ['input_type' => 'value', 'input_value' => 4],
+            $first->id => ['input_type' => 'formula', 'formula_text' => '{modal_value} * 2'],
+            $second->id => ['input_type' => 'formula', 'formula_text' => '{modal_value} + 10'],
+        ])->assertRedirect();
+
+        $operator = $this->makeUnitCostUser(
+            ['input_unit_cost'],
+            'operator-formula-modal@example.com',
+            $this->unitCostUnit,
+        );
+
+        $this->actingAs($operator)
+            ->get(route('calculations.parameters.edit', [
+                'period' => $period,
+                'component' => $component->id,
+                'unit_id' => $this->unitCostUnit->id,
+            ]))
+            ->assertOk()
+            ->assertSee('Lihat Rumus (2)')
+            ->assertSee('id="formula-preview-modal"', false)
+            ->assertSee('{modal_value} * 2')
+            ->assertSee('{modal_value} + 10')
+            ->assertDontSee('Input Rumus');
     }
 
     public function test_period_and_unit_entries_are_isolated(): void
@@ -424,6 +509,9 @@ class UnitCostParameterTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('Anda hanya dapat mengisi nilai.')
+            ->assertSee('Lihat Rumus')
+            ->assertSee('id="formula-preview-modal"', false)
+            ->assertSee('{test_a} * 2')
             ->assertDontSee('name="entries['.$b->id.'][formula_text]"', false)
             ->assertDontSee('name="entries['.$b->id.'][input_type]"', false)
             ->assertDontSee('name="entries['.$global->id.'][input_type]"', false);

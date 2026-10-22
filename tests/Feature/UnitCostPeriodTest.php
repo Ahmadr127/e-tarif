@@ -195,6 +195,34 @@ class UnitCostPeriodTest extends TestCase
             ->assertSee('Riwayat Hasil');
     }
 
+    public function test_official_report_pdf_can_be_downloaded(): void
+    {
+        $period = $this->createPeriod();
+        $component = UnitCostComponent::query()->where('code', 'GAJI')->firstOrFail();
+
+        $this->unitCostUnit->unitCostComponents()->attach($component->id);
+
+        $this->actingAs($this->unitCostUser)
+            ->get(route('calculations.periods.official-report', [
+                'period' => $period,
+                'unit_id' => $this->unitCostUnit->id,
+            ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_period_page_returns_not_found_for_unknown_unit(): void
+    {
+        $period = $this->createPeriod();
+
+        $this->actingAs($this->unitCostUser)
+            ->get(route('calculations.periods.show', [
+                'period' => $period,
+                'unit_id' => 999999,
+            ]))
+            ->assertNotFound();
+    }
+
     public function test_calculate_routes_are_not_registered(): void
     {
         $this->assertFalse(\Illuminate\Support\Facades\Route::has('calculations.store'));

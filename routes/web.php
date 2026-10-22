@@ -19,6 +19,7 @@ use App\Http\Controllers\TarifUnitServicePrefixController;
 use App\Http\Controllers\UnitCostMasterController;
 use App\Http\Controllers\UnitCostParameterController;
 use App\Http\Controllers\UnitCostPeriodController;
+use App\Http\Controllers\UnitCostReportController;
 use App\Http\Controllers\UnitCostUnitController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -140,6 +141,9 @@ Route::middleware('auth')->group(function () {
         Route::get('calculations/periods/{period}', [UnitCostPeriodController::class, 'show'])
             ->whereNumber('period')
             ->name('calculations.periods.show');
+        Route::get('calculations/periods/{period}/official-report', [UnitCostReportController::class, 'pdf'])
+            ->whereNumber('period')
+            ->name('calculations.periods.official-report');
     });
 
     // Unit Cost: daftar unit aktif + assign komponen (global untuk semua periode).

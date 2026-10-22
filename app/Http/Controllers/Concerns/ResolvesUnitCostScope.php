@@ -40,7 +40,14 @@ trait ResolvesUnitCostScope
         }
 
         if ($unitId !== null && $unitId !== '') {
-            return OrganizationUnit::query()->find((int) $unitId);
+            $unit = OrganizationUnit::query()->find((int) $unitId);
+
+            // Jangan diam-diam jatuh ke konteks global saat unit_id di URL
+            // tidak ada; konteks unit yang salah membuat laporan/komponen
+            // tampak seperti milik semua unit.
+            abort_if($unit === null, 404, 'Unit tidak ditemukan.');
+
+            return $unit;
         }
 
         if ($units !== null) {
