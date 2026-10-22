@@ -69,10 +69,10 @@
                             $statusBadge = $statusMeta[$status] ?? $statusMeta['incomplete'];
                         @endphp
                         @if(! $isValue)
-                            {{-- Baris rumus: hanya nama parameter dan hasil; kolom lain sengaja kosong. --}}
+                            {{-- Baris rumus: hanya nomor, nama parameter, dan hasil; kolom lain sengaja kosong. --}}
                             <tr class="align-top parameter-row-readonly"
                                 data-parameter-id="{{ $parameterId }}">
-                                <td class="px-3 py-3"></td>
+                                <td class="px-3 py-3 text-center text-gray-500">{{ $loop->iteration }}</td>
                                 <td class="px-3 py-3">
                                     <div class="font-semibold text-gray-900">{{ $parameter->name }}</div>
                                     <p class="row-error mt-1 text-xs text-red-600 {{ $row['error'] ? '' : 'hidden' }}">{{ $row['error'] }}</p>
