@@ -73,6 +73,37 @@ class User extends Authenticatable
     }
 
     /**
+     * Admin Unit Cost dapat melihat semua unit dan mengelola metode/rumus.
+     *
+     * Permission lama tetap dianggap admin agar role yang sudah berjalan
+     * sebelum pemisahan akses tidak kehilangan akses.
+     */
+    public function isUnitCostAdmin(): bool
+    {
+        foreach ([
+            'manage_unit_cost',
+            'manage_unit_cost_periods',
+            'manage_unit_cost_masters',
+            'manage_calculations',
+        ] as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Operator unit: hanya boleh membuka unit organisasi miliknya sendiri.
+     */
+    public function isScopedUnitCostUser(): bool
+    {
+        return ! $this->isUnitCostAdmin()
+            && $this->hasPermission('input_unit_cost');
+    }
+
+    /**
      * @return BelongsTo<OrganizationUnit, $this>
      */
     public function organizationUnit(): BelongsTo

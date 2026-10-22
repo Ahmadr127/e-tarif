@@ -19,6 +19,7 @@ use App\Http\Controllers\TarifUnitServicePrefixController;
 use App\Http\Controllers\UnitCostMasterController;
 use App\Http\Controllers\UnitCostParameterController;
 use App\Http\Controllers\UnitCostPeriodController;
+use App\Http\Controllers\UnitCostUnitController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -109,7 +110,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Unit Cost: Periode -> Komponen -> Parameter.
-    Route::middleware('permission:manage_unit_cost_periods|manage_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost|manage_unit_cost_periods|manage_calculations')->group(function () {
         Route::get('calculations', [UnitCostPeriodController::class, 'index'])
             ->name('calculations.index');
         Route::get('calculations/periods/create', [UnitCostPeriodController::class, 'create'])
@@ -131,19 +132,39 @@ Route::middleware('auth')->group(function () {
         Route::post('calculations/periods/{period}/close', [UnitCostPeriodController::class, 'close'])
             ->whereNumber('period')
             ->name('calculations.periods.close');
+    });
+
+    // Tabel komponen periode. Operator unit boleh membuka route ini, tetapi
+    // controller mengunci unit ke unit organisasi miliknya.
+    Route::middleware('permission:manage_unit_cost|manage_unit_cost_periods|view_unit_cost_results|input_unit_cost|manage_calculations')->group(function () {
         Route::get('calculations/periods/{period}', [UnitCostPeriodController::class, 'show'])
             ->whereNumber('period')
             ->name('calculations.periods.show');
     });
 
-    Route::middleware('permission:view_unit_cost_results|edit_unit_cost_parameters|manage_calculations')->group(function () {
+    // Unit Cost: daftar unit aktif + assign komponen (global untuk semua periode).
+    Route::middleware('permission:manage_unit_cost|manage_unit_cost_periods|manage_unit_cost_masters|manage_calculations')->group(function () {
+        Route::get('calculations/units', [UnitCostUnitController::class, 'index'])
+            ->name('calculations.units.index');
+        Route::put('calculations/units/{unit}/components', [UnitCostUnitController::class, 'updateComponents'])
+            ->whereNumber('unit')
+            ->name('calculations.units.components.update');
+    });
+
+    // Pintasan operator unit: langsung ke tabel komponen unit sendiri.
+    Route::middleware('permission:input_unit_cost')->group(function () {
+        Route::get('unit-cost-saya', [UnitCostUnitController::class, 'myUnit'])
+            ->name('calculations.my-unit');
+    });
+
+    Route::middleware('permission:manage_unit_cost|view_unit_cost_results|edit_unit_cost_parameters|input_unit_cost|manage_calculations')->group(function () {
         Route::get('calculations/periods/{period}/components/{component}', [UnitCostParameterController::class, 'edit'])
             ->whereNumber('period')
             ->where('component', 'global|[0-9]+')
             ->name('calculations.parameters.edit');
     });
 
-    Route::middleware('permission:edit_unit_cost_parameters|manage_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost|edit_unit_cost_parameters|input_unit_cost|manage_calculations')->group(function () {
         Route::put('calculations/periods/{period}/components/{component}', [UnitCostParameterController::class, 'update'])
             ->whereNumber('period')
             ->where('component', 'global|[0-9]+')
@@ -152,12 +173,12 @@ Route::middleware('auth')->group(function () {
             ->name('calculations.parameters.preview');
     });
 
-    Route::middleware('permission:manage_unit_cost_components|manage_unit_cost_parameters|view_unit_cost_formula_history|manage_unit_cost_masters|manage_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost|manage_unit_cost_components|manage_unit_cost_parameters|view_unit_cost_formula_history|manage_unit_cost_masters|manage_calculations')->group(function () {
         Route::get('calculations/master', [UnitCostMasterController::class, 'index'])
             ->name('calculations.master');
     });
 
-    Route::middleware('permission:manage_unit_cost_components|manage_unit_cost_masters|manage_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost|manage_unit_cost_components|manage_unit_cost_masters|manage_calculations')->group(function () {
         Route::get('calculations/master/components/create', [UnitCostMasterController::class, 'createComponent'])
             ->name('calculations.master.components.create');
         Route::post('calculations/master/components', [UnitCostMasterController::class, 'storeComponent'])
@@ -173,7 +194,7 @@ Route::middleware('auth')->group(function () {
             ->name('calculations.master.components.destroy');
     });
 
-    Route::middleware('permission:manage_unit_cost_parameters|manage_unit_cost_masters|manage_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost|manage_unit_cost_parameters|manage_unit_cost_masters|manage_calculations')->group(function () {
         Route::get('calculations/master/parameters/create', [UnitCostMasterController::class, 'createParameter'])
             ->name('calculations.master.parameters.create');
         Route::post('calculations/master/parameters', [UnitCostMasterController::class, 'storeParameter'])
@@ -189,7 +210,7 @@ Route::middleware('auth')->group(function () {
             ->name('calculations.master.parameters.destroy');
     });
 
-    Route::middleware('permission:view_unit_cost_results|manage_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost|view_unit_cost_results|manage_calculations')->group(function () {
         Route::get('calculations/history', [UnitCostPeriodController::class, 'history'])
             ->name('calculations.history.index');
         Route::get('calculations/history/{snapshot}', [UnitCostPeriodController::class, 'historyShow'])
@@ -197,7 +218,7 @@ Route::middleware('auth')->group(function () {
             ->name('calculations.history.show');
     });
 
-    Route::middleware('permission:approve_unit_cost_results|approve_calculations')->group(function () {
+    Route::middleware('permission:manage_unit_cost|approve_unit_cost_results|approve_calculations')->group(function () {
         Route::post('calculations/periods/{period}/approve', [UnitCostPeriodController::class, 'approve'])
             ->whereNumber('period')
             ->name('calculations.periods.approve');

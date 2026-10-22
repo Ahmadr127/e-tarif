@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrganizationUnit extends Model
@@ -98,6 +99,22 @@ class OrganizationUnit extends Model
     public function servicePrefixes(): HasMany
     {
         return $this->hasMany(TarifUnitServicePrefix::class);
+    }
+
+    /**
+     * Komponen unit cost yang di-assign ke unit ini (global untuk semua
+     * periode).
+     *
+     * @return BelongsToMany<UnitCostComponent, $this>
+     */
+    public function unitCostComponents(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            UnitCostComponent::class,
+            'unit_cost_component_unit',
+            'organization_unit_id',
+            'unit_cost_component_id'
+        )->withTimestamps();
     }
 
     /**

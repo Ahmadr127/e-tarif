@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Kalkulasi Unit Cost')
+@section('title', 'Periode Unit Cost')
 
 @section('content')
 @php
@@ -17,10 +17,20 @@
 @endphp
 
 <div class="w-full mx-auto space-y-4">
+    <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+        <span class="font-semibold text-gray-700">Master</span>
+        <i class="bi bi-chevron-right text-xs"></i>
+        <span>Periode Unit Cost</span>
+    </div>
+
     <x-card padding="false">
         <x-slot name="title">Periode Kalkulasi Unit Cost</x-slot>
         <x-slot name="subtitle">Pilih periode, buka komponen, lalu isi nilai atau rumus parameter</x-slot>
         <x-slot name="actions">
+            {{-- <a href="{{ route('calculations.units.index') }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-sp-navy border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
+                <i class="bi bi-buildings"></i> Daftar Unit
+            </a> --}}
             <a href="{{ route('calculations.periods.create') }}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
                 <i class="bi bi-plus-lg"></i> Tambah Periode
@@ -45,13 +55,15 @@
                            class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
                 </div>
                 <div class="lg:w-44">
-                    <label for="status" class="block text-xs font-semibold text-gray-600 mb-1">Status</label>
-                    <select id="status" name="status" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
-                        <option value="">Semua Status</option>
-                        @foreach($statusLabels as $value => $label)
-                            <option value="{{ $value }}" {{ ($filters['status'] ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    <x-searchable-dropdown
+                        label-field="label"
+                        name="status"
+                        label="Status"
+                        :options="collect($statusLabels)->map(fn ($label, $value) => (object) ['id' => $value, 'label' => $label])->values()"
+                        :selected="($filters['status'] ?? '') !== '' ? $filters['status'] : null"
+                        placeholder="Semua Status"
+                        empty-option="Semua Status"
+                    />
                 </div>
                 <div class="flex items-center gap-2">
                     <a href="{{ route('calculations.index') }}" class="inline-flex items-center px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
@@ -99,10 +111,10 @@
                     </td>
                     <td class="px-4 py-3 whitespace-nowrap">
                         <div class="flex items-center gap-1.5">
-                            <a href="{{ route('calculations.periods.show', $period) }}" title="Buka periode"
+                            {{-- <a href="{{ route('calculations.periods.show', $period) }}" title="Buka periode"
                                class="inline-flex items-center justify-center w-7 h-7 rounded-md text-sp-navy border border-gray-200 bg-white hover:bg-sp-primary/10 hover:border-sp-primary/30 hover:text-sp-primary transition-colors">
                                 <i class="bi bi-folder2-open"></i>
-                            </a>
+                            </a> --}}
                             <a href="{{ route('calculations.periods.edit', $period) }}" title="Edit periode"
                                class="inline-flex items-center justify-center w-7 h-7 rounded-md text-sp-navy border border-gray-200 bg-white hover:bg-sp-primary/10 hover:border-sp-primary/30 hover:text-sp-primary transition-colors">
                                 <i class="bi bi-pencil"></i>

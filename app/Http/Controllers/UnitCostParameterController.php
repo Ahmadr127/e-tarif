@@ -2,20 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesUnitCostScope;
 use App\Http\Requests\UnitCost\SaveUnitCostParameters;
 use App\Models\OrganizationUnit;
 use App\Models\UnitCostComponent;
+use App\Models\UnitCostParameterEntry;
 use App\Models\UnitCostPeriod;
 use App\Services\UnitCost\ParameterEvaluationService;
 use Illuminate\Http\Request;
 
 class UnitCostParameterController extends Controller
 {
+    use ResolvesUnitCostScope;
+
     public function __construct(protected ParameterEvaluationService $service) {}
 
     public function edit(Request $request, UnitCostPeriod $period, string $component)
     {
         $componentId = $this->resolveComponentId($component);
+        $this->assertComponentAccessible($request, $componentId);
+
         $units = OrganizationUnit::query()->active()->orderBy('name')->get(['id', 'name', 'code']);
         $unit = $this->resolveUnit($request, $units);
 
@@ -38,20 +44,30 @@ class UnitCostParameterController extends Controller
             'units' => $units,
             'unit' => $unit,
             'summary' => $evaluation->summary,
+            'isAdmin' => $this->isUnitCostAdmin($request),
+            'isScopedUser' => $this->isScopedUnitCostUser($request),
         ]);
     }
 
     public function update(SaveUnitCostParameters $request, UnitCostPeriod $period, string $component)
     {
         $componentId = $this->resolveComponentId($component);
+        $this->assertComponentAccessible($request, $componentId);
+
         $unit = $this->resolveUnit($request);
 
         $entries = $request->input('entries', []);
+        $entries = is_array($entries) ? $entries : [];
+
+        if ($this->isScopedUnitCostUser($request)) {
+            $entries = $this->sanitizeScopedEntries($period, $unit, $componentId, $entries);
+        }
+
         $result = $this->service->save(
             $period,
             $unit,
             $componentId,
-            is_array($entries) ? $entries : [],
+            $entries,
             auth()->id(),
         );
 
@@ -84,8 +100,16 @@ class UnitCostParameterController extends Controller
             ? OrganizationUnit::query()->find((int) $data['unit_id'])
             : null;
         $componentId = $this->resolveComponentId((string) ($data['component'] ?? 'global'));
+        $this->assertComponentAccessible($request, $componentId);
 
-        $result = $this->service->evaluate($period, $unit, $data['entries'] ?? []);
+        $entries = $data['entries'] ?? [];
+
+        if ($this->isScopedUnitCostUser($request)) {
+            $unit = $this->resolveOwnUnit($request);
+            $entries = $this->sanitizeScopedEntries($period, $unit, $componentId, $entries);
+        }
+
+        $result = $this->service->evaluate($period, $unit, $entries);
         $rows = [];
         $componentSummary = [
             'total' => 0,
@@ -137,24 +161,42 @@ class UnitCostParameterController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, OrganizationUnit>|null  $units
+     * Operator unit hanya boleh mengirim nilai untuk parameter berscope unit
+     * yang efektif memakai input nilai. Parameter global dan formula tetap
+     * memakai definisi admin.
+     *
+     * @param  array<int|string, mixed>  $entries
+     * @return array<int|string, array<string, mixed>>
      */
-    private function resolveUnit(Request $request, $units = null): ?OrganizationUnit
-    {
-        $unitId = $request->input('unit_id');
+    private function sanitizeScopedEntries(
+        UnitCostPeriod $period,
+        ?OrganizationUnit $unit,
+        ?int $componentId,
+        array $entries,
+    ): array {
+        $rows = $this->service->evaluate($period, $unit)->forComponent($componentId);
+        $allowed = [];
 
-        if ($unitId === '0' || $unitId === 0) {
-            return null;
+        foreach ($rows as $row) {
+            if ($row['input_type'] === UnitCostParameterEntry::INPUT_VALUE
+                && $row['parameter']->requiresUnit()) {
+                $allowed[(string) $row['parameter']->id] = true;
+            }
         }
 
-        if ($unitId !== null && $unitId !== '') {
-            return OrganizationUnit::query()->find((int) $unitId);
+        $clean = [];
+
+        foreach ($entries as $parameterId => $entry) {
+            if (! isset($allowed[(string) $parameterId]) || ! is_array($entry)) {
+                continue;
+            }
+
+            $clean[$parameterId] = [
+                'input_type' => UnitCostParameterEntry::INPUT_VALUE,
+                'input_value' => $entry['input_value'] ?? null,
+            ];
         }
 
-        if ($units !== null) {
-            return $units->first();
-        }
-
-        return OrganizationUnit::query()->active()->orderBy('name')->first();
+        return $clean;
     }
 }

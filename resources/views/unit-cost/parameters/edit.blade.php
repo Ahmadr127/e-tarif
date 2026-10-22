@@ -4,6 +4,8 @@
 
 @section('content')
 @php
+    $isAdmin = $isAdmin ?? false;
+    $isScopedUser = $isScopedUser ?? false;
     $statusMeta = [
         'valid' => ['label' => 'Valid', 'class' => 'bg-green-100 text-green-800'],
         'incomplete' => ['label' => 'Belum lengkap', 'class' => 'bg-amber-100 text-amber-800'],
@@ -16,7 +18,11 @@
 
 <div class="w-full mx-auto space-y-4">
     <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-        <a href="{{ route('calculations.index') }}" class="font-semibold text-sp-primary hover:underline">Periode</a>
+        @if($isScopedUser)
+            <a href="{{ route('calculations.my-unit') }}" class="font-semibold text-sp-primary hover:underline">Unit Cost Saya</a>
+        @else
+            <a href="{{ route('calculations.index') }}" class="font-semibold text-sp-primary hover:underline">Periode</a>
+        @endif
         <i class="bi bi-chevron-right text-xs"></i>
         <a href="{{ route('calculations.periods.show', ['period' => $period, 'unit_id' => $unit?->id ?? '0']) }}" class="font-semibold text-sp-primary hover:underline">{{ $period->name }}</a>
         <i class="bi bi-chevron-right text-xs"></i>
@@ -34,9 +40,11 @@
                     @if($unit) · Unit {{ $unit->name }} ({{ $unit->code }}) @else · Tanpa unit (global) @endif
                 </x-slot>
                 <x-slot name="actions">
-                    <x-variable-help-modal :parameters="$allParameters" />
+                    @unless($isScopedUser)
+                        <x-variable-help-modal :parameters="$allParameters" />
+                    @endunless
 
-                    @if(auth()->user()?->hasPermission('manage_unit_cost_parameters') || auth()->user()?->hasPermission('manage_unit_cost_masters') || auth()->user()?->hasPermission('manage_calculations'))
+                    @if(auth()->user()?->hasPermission('manage_unit_cost') || auth()->user()?->hasPermission('manage_unit_cost_parameters') || auth()->user()?->hasPermission('manage_unit_cost_masters') || auth()->user()?->hasPermission('manage_calculations'))
                         <a href="{{ route('calculations.master.parameters.create', [
                                 'component_id' => $componentModel?->id,
                                 'period_id' => $period->id,
@@ -59,7 +67,11 @@
 
                 @if($locked)
                     <div class="m-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                        Periode ini sudah ditutup. Nilai dan rumus tidak dapat diubah.
+                        @if($isScopedUser)
+                            Periode ini sudah ditutup. Nilai tidak dapat diubah.
+                        @else
+                            Periode ini sudah ditutup. Nilai dan rumus tidak dapat diubah.
+                        @endif
                     </div>
                 @endif
 
@@ -74,122 +86,11 @@
                     </div>
                 @endif
 
-                <form id="parameter-form" method="POST"
-                      action="{{ route('calculations.parameters.update', ['period' => $period, 'component' => $componentSlug]) }}"
-                      class="p-4 space-y-4">
-                    @csrf
-                    @method('PUT')
-                    <input type="hidden" name="unit_id" value="{{ $unit?->id ?? '0' }}">
-
-                    @if($rows === [])
-                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-                            Belum ada parameter aktif pada komponen ini.
-                        </div>
-                    @else
-                        <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                            <table class="w-full text-sm min-w-[64rem]">
-                                <thead class="bg-gray-100">
-                                    <tr>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 w-10">No.</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-48">Nama Parameter</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-40">Kode Parameter</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-24">Satuan</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-32">Metode Input</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-72">Nilai / Rumus</th>
-                                        <th class="px-3 py-2.5 text-right font-semibold text-gray-700 min-w-32">Hasil</th>
-                                        <th class="px-3 py-2.5 text-left font-semibold text-gray-700 min-w-28">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    @foreach($rows as $row)
-                                        @php
-                                            $parameter = $row['parameter'];
-                                            $entry = $row['entry'];
-                                            $parameterId = $parameter->id;
-                                            $inputType = old("entries.{$parameterId}.input_type", $row['input_type']);
-                                            $inputValue = old("entries.{$parameterId}.input_value", $row['input_value']);
-                                            $suggestedFormula = $latestVersions->get($parameterId)?->expression;
-                                            $formulaText = old("entries.{$parameterId}.formula_text", $row['formula_text'] ?: $suggestedFormula);
-                                            $status = $row['status'];
-                                            $statusBadge = $statusMeta[$status] ?? $statusMeta['incomplete'];
-                                        @endphp
-                                        <tr class="align-top parameter-row"
-                                            data-parameter-id="{{ $parameterId }}"
-                                            data-initial-type="{{ $row['input_type'] }}">
-                                            <td class="px-3 py-3 text-center text-gray-500">{{ $loop->iteration }}</td>
-                                            <td class="px-3 py-3">
-                                                <div class="font-semibold text-gray-900">{{ $parameter->name }}</div>
-                                            </td>
-                                            <td class="px-3 py-3">
-                                                <span class="font-mono text-xs font-semibold text-sp-navy break-all">{{ '{'.$parameter->formulaKey().'}' }}</span>
-                                            </td>
-                                            <td class="px-3 py-3 text-xs text-gray-600">{{ $parameter->unit ?: '-' }}</td>
-                                            <td class="px-3 py-3">
-                                                <select name="entries[{{ $parameterId }}][input_type]"
-                                                        class="method-select w-full text-xs px-2 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary"
-                                                        data-previous="{{ $row['input_type'] }}">
-                                                    <option value="value" {{ $inputType === 'value' ? 'selected' : '' }}>Input Nilai</option>
-                                                    <option value="formula" {{ $inputType === 'formula' ? 'selected' : '' }}>Input Rumus</option>
-                                                </select>
-                                            </td>
-                                            <td class="px-3 py-3">
-                                                <div class="value-field {{ $inputType === 'formula' ? 'hidden' : '' }}">
-                                                    <input type="number" step="any"
-                                                           name="entries[{{ $parameterId }}][input_value]"
-                                                           value="{{ $inputValue }}"
-                                                           placeholder="Masukkan nilai{{ $parameter->unit ? ' ('.$parameter->unit.')' : '' }}"
-                                                           class="value-input w-full text-sm px-2.5 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                                                </div>
-                                                <div class="formula-field {{ $inputType === 'formula' ? '' : 'hidden' }}">
-                                                    <textarea name="entries[{{ $parameterId }}][formula_text]" rows="3" spellcheck="false"
-                                                              placeholder="contoh: {luas_bangunan_tindakan} / {luas_bangunan_keseluruhan}"
-                                                              class="formula-input w-full text-xs px-2.5 py-2 border border-gray-300 rounded-md bg-white font-mono leading-5 focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">{{ $formulaText }}</textarea>
-                                                    <div class="mt-1 text-[10px] text-gray-500">
-                                                        Gunakan referensi {kode} parameter. Operator + - * /, kurung, dan fungsi abs, ceil, floor, sqrt, round, min, max.
-                                                    </div>
-                                                </div>
-                                                <p class="row-error mt-1 text-xs text-red-600 {{ $row['error'] ? '' : 'hidden' }}">{{ $row['error'] }}</p>
-                                            </td>
-                                            <td class="px-3 py-3 text-right">
-                                                <div class="result-value font-mono text-sm font-semibold text-gray-800">
-                                                    @if($row['result_value'] !== null)
-                                                        {{ number_format((float) $row['result_value'], 6, ',', '.') }}
-                                                    @else
-                                                        <span class="text-gray-400">-</span>
-                                                    @endif
-                                                </div>
-                                                @if($row['formula_version'])
-                                                    <div class="text-[10px] text-gray-400">v{{ $row['formula_version'] }}</div>
-                                                @endif
-                                            </td>
-                                            <td class="px-3 py-3">
-                                                <span class="status-badge inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $statusBadge['class'] }}">{{ $statusBadge['label'] }}</span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
-                            <div class="text-xs text-gray-500">
-                                Preview dihitung otomatis oleh backend. Menyimpan tidak membuat tombol hitung terpisah.
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <a href="{{ route('calculations.periods.show', ['period' => $period, 'unit_id' => $unit?->id ?? '0']) }}"
-                                   class="inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
-                                    Batal
-                                </a>
-                                @unless($locked)
-                                    <button type="submit" id="save-parameters"
-                                            class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
-                                        <i class="bi bi-save"></i> Simpan
-                                    </button>
-                                @endunless
-                            </div>
-                        </div>
-                    @endif
-                </form>
+                @if($isScopedUser)
+                    @include('unit-cost.parameters._form_user')
+                @else
+                    @include('unit-cost.parameters._form_admin')
+                @endif
             </x-card>
         </div>
 
@@ -212,6 +113,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function rows() {
         return Array.from(document.querySelectorAll('.parameter-row'));
+    }
+
+    function allRows() {
+        return Array.from(document.querySelectorAll('.parameter-row, .parameter-row-readonly'));
     }
 
     function payload() {
@@ -253,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function applyPreview(data) {
-        rows().forEach(function (row) {
+        allRows().forEach(function (row) {
             const id = row.dataset.parameterId;
             const result = data.rows?.[id];
             if (!result) return;

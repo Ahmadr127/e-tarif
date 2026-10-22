@@ -75,18 +75,18 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
-                    <label for="component_id" class="block text-sm font-semibold text-sp-navy mb-1">Komponen</label>
-                    <select id="component_id" name="component_id"
-                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                        <option value="">Global (tanpa komponen)</option>
-                        @foreach($components as $componentOption)
-                            <option value="{{ $componentOption->id }}"
-                                    @selected((string) old('component_id', $parameter->component_id) === (string) $componentOption->id)>
-                                {{ $componentOption->name }} ({{ $componentOption->code }}){{ $componentOption->is_active ? '' : ' - nonaktif' }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('component_id')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    <x-searchable-dropdown
+                        label-field="label"
+                        name="component_id"
+                        label="Komponen"
+                        :options="$components->map(fn ($componentOption) => (object) [
+                            'id' => (string) $componentOption->id,
+                            'label' => $componentOption->name.' ('.$componentOption->code.')'.($componentOption->is_active ? '' : ' - nonaktif'),
+                        ])->values()"
+                        :selected="old('component_id', $parameter->component_id)"
+                        placeholder="Global (tanpa komponen)"
+                        empty-option="Global (tanpa komponen)"
+                    />
                 </div>
 
                 <div class="md:col-span-2">
@@ -113,14 +113,15 @@
                 </div>
 
                 <div>
-                    <label for="value_type" class="block text-sm font-semibold text-sp-navy mb-1">Tipe Nilai <span class="text-red-500">*</span></label>
-                    <select id="value_type" name="value_type" required
-                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                        @foreach($valueTypes as $value => $label)
-                            <option value="{{ $value }}" @selected(old('value_type', $parameter->value_type) === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('value_type')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    <x-searchable-dropdown
+                        label-field="label"
+                        name="value_type"
+                        label="Tipe Nilai"
+                        :options="collect($valueTypes)->map(fn ($text, $value) => (object) ['id' => $value, 'label' => $text])->values()"
+                        :selected="old('value_type', $parameter->value_type)"
+                        placeholder="Pilih Tipe Nilai..."
+                        :required="true"
+                    />
                 </div>
 
                 <div>
@@ -133,14 +134,15 @@
                 </div>
 
                 <div>
-                    <label for="scope" class="block text-sm font-semibold text-sp-navy mb-1">Scope <span class="text-red-500">*</span></label>
-                    <select id="scope" name="scope" required
-                            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                        @foreach($scopes as $value => $label)
-                            <option value="{{ $value }}" @selected(old('scope', $parameter->scope) === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('scope')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    <x-searchable-dropdown
+                        label-field="label"
+                        name="scope"
+                        label="Scope"
+                        :options="collect($scopes)->map(fn ($text, $value) => (object) ['id' => $value, 'label' => $text])->values()"
+                        :selected="old('scope', $parameter->scope)"
+                        placeholder="Pilih Scope..."
+                        :required="true"
+                    />
                 </div>
 
                 <div class="flex items-end gap-6 pb-2">

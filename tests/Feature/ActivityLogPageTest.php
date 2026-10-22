@@ -205,4 +205,124 @@ class ActivityLogPageTest extends TestCase
         $response->assertSee('Room #7');
         $response->assertSee('Hapus room lama');
     }
+
+    public function test_model_created_updated_deleted_are_logged_automatically(): void
+    {
+        $permission = Permission::create([
+            'name' => 'auto-log-test',
+            'display_name' => 'Auto Log Test',
+        ]);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'created',
+            'subject_type' => Permission::class,
+            'subject_id' => $permission->id,
+        ]);
+
+        $permission->update(['display_name' => 'Auto Log Updated']);
+
+        $updated = ActivityLog::query()
+            ->where('subject_type', Permission::class)
+            ->where('subject_id', $permission->id)
+            ->where('event', 'updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($updated);
+        $this->assertSame('Auto Log Test', $updated->properties['diff']['display_name']['old'] ?? null);
+        $this->assertSame('Auto Log Updated', $updated->properties['diff']['display_name']['new'] ?? null);
+
+        $permission->delete();
+
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'deleted',
+            'subject_type' => Permission::class,
+            'subject_id' => $permission->id,
+        ]);
+    }
+
+    public function test_touch_only_update_is_not_logged_as_updated(): void
+    {
+        $permission = Permission::create([
+            'name' => 'touch-log-test',
+            'display_name' => 'Touch Log Test',
+        ]);
+
+        $updatedBefore = ActivityLog::query()
+            ->where('subject_type', Permission::class)
+            ->where('subject_id', $permission->id)
+            ->where('event', 'updated')
+            ->count();
+
+        $permission->touch();
+
+        $this->assertSame($updatedBefore, ActivityLog::query()
+            ->where('subject_type', Permission::class)
+            ->where('subject_id', $permission->id)
+            ->where('event', 'updated')
+            ->count());
+    }
+
+    public function test_manual_log_enriches_auto_log_without_duplicate(): void
+    {
+        $permission = Permission::create([
+            'name' => 'enrich-log-test',
+            'display_name' => 'Enrich Log Test',
+        ]);
+
+        $autoLog = ActivityLog::query()
+            ->where('subject_type', Permission::class)
+            ->where('subject_id', $permission->id)
+            ->where('event', 'created')
+            ->firstOrFail();
+
+        app(\App\Services\ActivityLogService::class)->log(
+            $permission,
+            'created',
+            ['attributes' => $permission->toArray()],
+            'Deskripsi manual',
+        );
+
+        $this->assertSame(1, ActivityLog::query()
+            ->where('subject_type', Permission::class)
+            ->where('subject_id', $permission->id)
+            ->where('event', 'created')
+            ->count());
+
+        $this->assertSame('Deskripsi manual', $autoLog->fresh()->description);
+    }
+
+    public function test_sensitive_fields_are_not_stored_in_auto_log(): void
+    {
+        $user = User::create([
+            'name' => 'Secret User',
+            'email' => 'secret@example.com',
+            'password' => 'super-secret-password',
+            'role_id' => $this->admin->role_id,
+        ]);
+
+        $log = ActivityLog::query()
+            ->where('subject_type', User::class)
+            ->where('subject_id', $user->id)
+            ->where('event', 'created')
+            ->firstOrFail();
+
+        $attributes = $log->properties['attributes'] ?? [];
+
+        $this->assertArrayNotHasKey('password', $attributes);
+        $this->assertArrayNotHasKey('remember_token', $attributes);
+        $this->assertArrayNotHasKey('email_verified_at', $attributes);
+    }
+
+    public function test_activity_log_model_is_never_logged_recursively(): void
+    {
+        Permission::create([
+            'name' => 'recursion-log-test',
+            'display_name' => 'Recursion Log Test',
+        ]);
+
+        $this->assertDatabaseMissing('activity_logs', [
+            'subject_type' => ActivityLog::class,
+        ]);
+    }
 }

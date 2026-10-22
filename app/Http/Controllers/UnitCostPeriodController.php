@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesUnitCostScope;
 use App\Http\Requests\UnitCost\StoreUnitCostPeriod;
 use App\Http\Requests\UnitCost\UpdateUnitCostPeriod;
 use App\Models\OrganizationUnit;
@@ -15,6 +16,8 @@ use Illuminate\Http\Request;
 
 class UnitCostPeriodController extends Controller
 {
+    use ResolvesUnitCostScope;
+
     public function __construct(protected ParameterEvaluationService $service) {}
 
     public function index(Request $request)
@@ -157,11 +160,19 @@ class UnitCostPeriodController extends Controller
 
     public function show(Request $request, UnitCostPeriod $period)
     {
+        $isAdmin = $this->isUnitCostAdmin($request);
+        $isScopedUser = $this->isScopedUnitCostUser($request);
+
         $units = OrganizationUnit::query()->active()->orderBy('name')->get(['id', 'name', 'code']);
         $unit = $this->resolveUnit($request, $units);
 
         $components = UnitCostComponent::query()
             ->active()
+            // Admin melihat semua komponen aktif. Operator unit hanya melihat
+            // komponen yang di-assign ke unitnya.
+            ->when($unit !== null && ! $isAdmin, function ($query) use ($unit): void {
+                $query->whereHas('units', fn ($relation) => $relation->whereKey($unit->id));
+            })
             ->withCount([
                 'parameters' => fn ($query) => $query->active(),
             ])
@@ -177,15 +188,24 @@ class UnitCostPeriodController extends Controller
         $summaries = $this->service->componentSummaries($period, $unit);
         $periodStats = $this->service->periodStats($period);
 
+        $periods = UnitCostPeriod::query()
+            ->orderByDesc('period_year')
+            ->orderByDesc('id')
+            ->get(['id', 'name', 'period_year']);
+
         return view('unit-cost.periods.show', [
             'period' => $period,
-            'units' => $units,
+            'periods' => $periods,
             'unit' => $unit,
             'components' => $components,
             'globalCount' => $globalCount,
             'summaries' => $summaries,
             'periodStats' => $periodStats,
+            'isAdmin' => $isAdmin,
+            'isScopedUser' => $isScopedUser,
             'canApprove' => $request->user()->hasPermission('approve_unit_cost_results')
+                || $request->user()->hasPermission('approve_calculations')
+                || $request->user()->hasPermission('manage_unit_cost')
                 || $request->user()->hasPermission('manage_calculations'),
         ]);
     }
@@ -228,27 +248,5 @@ class UnitCostPeriodController extends Controller
             'snapshot' => $snapshot,
             'payload' => $snapshot->payload ?? [],
         ]);
-    }
-
-    /**
-     * @param  \Illuminate\Support\Collection<int, OrganizationUnit>|null  $units
-     */
-    private function resolveUnit(Request $request, $units = null): ?OrganizationUnit
-    {
-        $unitId = $request->input('unit_id');
-
-        if ($unitId === '0' || $unitId === 0) {
-            return null;
-        }
-
-        if ($unitId !== null && $unitId !== '') {
-            return OrganizationUnit::query()->find((int) $unitId);
-        }
-
-        if ($units !== null) {
-            return $units->first();
-        }
-
-        return OrganizationUnit::query()->active()->orderBy('name')->first();
     }
 }

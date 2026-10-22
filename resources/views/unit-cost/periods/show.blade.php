@@ -4,6 +4,8 @@
 
 @section('content')
 @php
+    $isAdmin = $isAdmin ?? false;
+    $isScopedUser = $isScopedUser ?? false;
     $periodStatusLabels = [
         'draft' => 'Draf',
         'active' => 'Aktif',
@@ -23,7 +25,9 @@
 
 <div class="w-full mx-auto space-y-4">
     <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-        <a href="{{ route('calculations.index') }}" class="font-semibold text-sp-primary hover:underline">Periode</a>
+        <a href="{{ $isScopedUser ? route('calculations.my-unit') : route('calculations.units.index') }}" class="font-semibold text-sp-primary hover:underline">
+            {{ $isScopedUser ? 'Unit Cost Saya' : 'Unit Cost' }}
+        </a>
         <i class="bi bi-chevron-right text-xs"></i>
         <span class="font-semibold text-gray-700">{{ $period->name }}</span>
         <i class="bi bi-chevron-right text-xs"></i>
@@ -37,7 +41,7 @@
             <span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full {{ $periodStatusClasses[$period->status] ?? 'bg-gray-100 text-gray-700' }}">
                 {{ $periodStatusLabels[$period->status] ?? $period->status }}
             </span>
-            @if($period->status !== 'closed')
+            @if($isAdmin && $period->status !== 'closed')
                 <a href="{{ route('calculations.periods.edit', $period) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
@@ -54,93 +58,45 @@
         </x-slot>
 
 
-        <div class="px-4 py-3 border-b border-gray-100 bg-white">
-            <form method="GET" action="{{ route('calculations.periods.show', $period) }}" class="flex flex-col sm:flex-row gap-3 items-end">
-                <div class="sm:w-80">
-                    <label for="unit_id" class="block text-xs font-semibold text-gray-600 mb-1">Konteks Unit</label>
-                    <select id="unit_id" name="unit_id" onchange="this.form.submit()"
-                            class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
-                        <option value="0" {{ $unit === null ? 'selected' : '' }}>Tanpa unit (global)</option>
-                        @foreach($units as $unitOption)
-                            <option value="{{ $unitOption->id }}" {{ $unit?->id === $unitOption->id ? 'selected' : '' }}>
-                                {{ $unitOption->name }} ({{ $unitOption->code }})
-                            </option>
-                        @endforeach
-                    </select>
+        <div class="px-4 py-3 border-b border-gray-100 bg-white flex flex-wrap items-center justify-between gap-3">
+            <div class="text-sm">
+                <span class="text-gray-500">Konteks unit:</span>
+                @if($unit)
+                    <span class="font-semibold text-gray-800">{{ $unit->name }} ({{ $unit->code }})</span>
+                @else
+                    <span class="font-semibold text-gray-800">Tanpa unit (global)</span>
+                @endif
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <label class="text-xs font-semibold text-gray-600">Tahun</label>
+                <div class="w-40">
+                    <x-searchable-dropdown
+                        name="period_id"
+                        label-field="label"
+                        :options="$periods->map(fn ($periodOption) => (object) [
+                            'id' => (string) $periodOption->id,
+                            'label' => $periodOption->period_year
+                                .(trim((string) $periodOption->name) === (string) $periodOption->period_year ? '' : ' · '.$periodOption->name),
+                        ])"
+                        :selected="(string) $period->id"
+                        placeholder="Pilih Tahun"
+                        onchange="window.location.href = '{{ route('calculations.periods.show', ['period' => '__PERIOD__']) }}'.replace('__PERIOD__', this.value) + '?unit_id={{ $unit?->id ?? 0 }}'"
+                    />
                 </div>
-                <div class="text-xs text-gray-500 pb-2">
-                    Parameter berscope unit disimpan terpisah untuk setiap unit.
-                </div>
-            </form>
+                @unless($isScopedUser)
+                    <a href="{{ route('calculations.units.index') }}"
+                       class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-sp-primary border border-sp-primary/30 rounded hover:bg-sp-primary/5">
+                        <i class="bi bi-arrow-left-right"></i> Ganti Unit
+                    </a>
+                @endunless
+            </div>
         </div>
 
-        <x-table :columns="['No', 'Komponen', 'Parameter', 'Terkonfigurasi', 'Belum Lengkap', 'Error', 'Status', 'Terakhir Diubah', 'Aksi']"
-                 empty="Belum ada komponen aktif." class="border-0 rounded-none shadow-none">
-            @php $rowNumber = 1; @endphp
-            @if($globalCount > 0)
-                @php
-                    $global = $summaries['global'] ?? ['total' => 0, 'configured' => 0, 'incomplete' => 0, 'invalid' => 0, 'status' => 'incomplete', 'last_updated' => null];
-                    $globalBadge = $summaryStatus[$global['status']] ?? $summaryStatus['incomplete'];
-                @endphp
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-4 py-3 text-center text-gray-500">{{ $rowNumber++ }}</td>
-                    <td class="px-4 py-3">
-                        <div class="text-sm font-semibold text-gray-900">Parameter Global</div>
-                        <div class="text-xs text-gray-500">Tidak terikat komponen</div>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ (int) $global['total'] }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ (int) $global['configured'] }}</td>
-                    <td class="px-4 py-3 text-sm text-amber-700">{{ (int) $global['incomplete'] }}</td>
-                    <td class="px-4 py-3 text-sm text-red-700">{{ (int) $global['invalid'] }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $globalBadge['class'] }}">{{ $globalBadge['label'] }}</span>
-                    </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                        {{ $global['last_updated']?->format('d/m/Y H:i') ?? '-' }}
-                    </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <a href="{{ route('calculations.parameters.edit', ['period' => $period, 'component' => 'global', 'unit_id' => $unit?->id ?? '0']) }}"
-                           class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-sp-primary border border-sp-primary/30 rounded hover:bg-sp-primary/5">
-                            <i class="bi bi-pencil-square"></i> Buka
-                        </a>
-                    </td>
-                </tr>
-            @endif
-
-            @foreach($components as $component)
-                @php
-                    $summary = $summaries[(string) $component->id] ?? ['total' => 0, 'configured' => 0, 'incomplete' => 0, 'invalid' => 0, 'status' => 'incomplete', 'last_updated' => null];
-                    $badge = $summaryStatus[$summary['status']] ?? $summaryStatus['incomplete'];
-                @endphp
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-4 py-3 text-center text-gray-500">{{ $rowNumber++ }}</td>
-                    <td class="px-4 py-3">
-                        <div class="text-sm font-semibold text-gray-900">{{ $component->name }}</div>
-                        <div class="text-xs font-mono text-gray-500">{{ $component->code }}</div>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ (int) $summary['total'] }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ (int) $summary['configured'] }}</td>
-                    <td class="px-4 py-3 text-sm text-amber-700">{{ (int) $summary['incomplete'] }}</td>
-                    <td class="px-4 py-3 text-sm text-red-700">{{ (int) $summary['invalid'] }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $badge['class'] }}">{{ $badge['label'] }}</span>
-                    </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                        {{ $summary['last_updated']?->format('d/m/Y H:i') ?? '-' }}
-                    </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        @if($component->parameters_count > 0)
-                            <a href="{{ route('calculations.parameters.edit', ['period' => $period, 'component' => $component->id, 'unit_id' => $unit?->id ?? '0']) }}"
-                               class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-sp-primary border border-sp-primary/30 rounded hover:bg-sp-primary/5">
-                                <i class="bi bi-pencil-square"></i> Buka
-                            </a>
-                        @else
-                            <span class="text-xs text-gray-400">Belum ada parameter</span>
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
-        </x-table>
+        @if($isScopedUser)
+            @include('unit-cost.periods._table_user')
+        @else
+            @include('unit-cost.periods._table_admin')
+        @endif
     </x-card>
 </div>
 @endsection

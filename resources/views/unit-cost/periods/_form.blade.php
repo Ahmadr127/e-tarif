@@ -59,14 +59,18 @@
             </div>
 
             <div>
-                <label for="status" class="block text-sm font-semibold text-sp-navy mb-1">Status</label>
-                <select id="status" name="status"
-                        class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">
-                    <option value="draft" {{ old('status', $period->status) === 'draft' ? 'selected' : '' }}>Draf</option>
-                    <option value="active" {{ old('status', $period->status) === 'active' ? 'selected' : '' }}>Aktif</option>
-                    <option value="closed" {{ old('status', $period->status) === 'closed' ? 'selected' : '' }}>Ditutup</option>
-                </select>
-                @error('status')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                <x-searchable-dropdown
+                    label-field="label"
+                    name="status"
+                    label="Status"
+                    :options="collect([
+                        (object) ['id' => 'draft', 'label' => 'Draf'],
+                        (object) ['id' => 'active', 'label' => 'Aktif'],
+                        (object) ['id' => 'closed', 'label' => 'Ditutup'],
+                    ])"
+                    :selected="old('status', $period->status)"
+                    placeholder="Pilih Status..."
+                />
             </div>
         </div>
 

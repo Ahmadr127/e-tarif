@@ -121,6 +121,31 @@ return [
             [
                 'label' => 'Unit Cost',
                 'icon' => 'bi-calculator',
+                'route' => 'calculations.units.index',
+                'route_pattern' => 'calculations.units.*',
+                'permission' => 'manage_unit_cost',
+            ],
+            [
+                'label' => 'Unit Cost Saya',
+                'icon' => 'bi-calculator-fill',
+                'route' => 'calculations.my-unit',
+                'route_pattern' => [
+                    'calculations.my-unit',
+                    'calculations.periods.show',
+                    'calculations.parameters.*',
+                ],
+                'permission' => 'input_unit_cost',
+            ],
+            // [
+            //     'label' => 'Riwayat Hasil',
+            //     'icon' => 'bi-clock-history',
+            //     'route' => 'calculations.history.index',
+            //     'route_pattern' => 'calculations.history.*',
+            //     'permission' => 'view_unit_cost_results',
+            // ],
+            [
+                'label' => 'Master',
+                'icon' => 'bi-cash-coin',
                 'children' => [
                     [
                         'label' => 'Periode',
@@ -129,26 +154,6 @@ return [
                         'route_pattern' => ['calculations.index', 'calculations.periods.*', 'calculations.parameters.*'],
                         'permission' => 'manage_unit_cost_periods',
                     ],
-                    // [
-                    //     'label' => 'Master',
-                    //     'icon' => 'bi-sliders',
-                    //     'route' => 'calculations.master',
-                    //     'route_pattern' => 'calculations.master*',
-                    //     'permission' => 'manage_unit_cost_masters',
-                    // ],
-                    [
-                        'label' => 'Riwayat Hasil',
-                        'icon' => 'bi-clock-history',
-                        'route' => 'calculations.history.index',
-                        'route_pattern' => 'calculations.history.*',
-                        'permission' => 'view_unit_cost_results',
-                    ],
-                ],
-            ],
-            [
-                'label' => 'Master',
-                'icon' => 'bi-cash-coin',
-                'children' => [
                     [
                         'label' => 'Komponen',
                         'icon' => 'bi-diagram-3-fill',

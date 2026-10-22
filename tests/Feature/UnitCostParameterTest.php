@@ -361,6 +361,98 @@ class UnitCostParameterTest extends TestCase
             ->assertRedirect();
     }
 
+    public function test_scoped_user_only_edits_values_and_cannot_overwrite_formula(): void
+    {
+        $component = $this->makeComponent();
+        $a = $this->makeParameter($component, 'test_a', 'A', sortOrder: 10);
+        $b = $this->makeParameter($component, 'test_b', 'B', sortOrder: 20, sourceType: 'derived');
+        $global = $this->makeParameter($component, 'test_global', 'Global', sortOrder: 30, scope: 'global');
+        $period = $this->makePeriod();
+
+        $this->unitCostUnit->unitCostComponents()->attach($component->id);
+
+        $this->save($period, $this->unitCostUnit, $component, [
+            $a->id => ['input_type' => 'value', 'input_value' => 10],
+            $b->id => ['input_type' => 'formula', 'formula_text' => '{test_a} * 2'],
+            $global->id => ['input_type' => 'value', 'input_value' => 5],
+        ])->assertRedirect();
+
+        $operator = $this->makeUnitCostUser(
+            ['input_unit_cost'],
+            'operator-unit-cost@example.com',
+            $this->unitCostUnit,
+        );
+
+        $this->actingAs($operator)
+            ->get(route('calculations.parameters.edit', [
+                'period' => $period,
+                'component' => $component->id,
+                'unit_id' => $this->unitCostUnit->id,
+            ]))
+            ->assertOk()
+            ->assertSee('Anda hanya dapat mengisi nilai.')
+            ->assertDontSee('name="entries['.$b->id.'][formula_text]"', false)
+            ->assertDontSee('name="entries['.$b->id.'][input_type]"', false)
+            ->assertDontSee('name="entries['.$global->id.'][input_type]"', false);
+
+        $this->actingAs($operator)
+            ->put(route('calculations.parameters.update', [
+                'period' => $period,
+                'component' => $component->id,
+            ]), [
+                'unit_id' => $this->unitCostUnit->id,
+                'entries' => [
+                    $a->id => ['input_type' => 'value', 'input_value' => 20],
+                    $b->id => ['input_type' => 'formula', 'formula_text' => '{test_a} * 99'],
+                    $global->id => ['input_type' => 'value', 'input_value' => 999],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(20.0, (float) $this->entryFor($period, $a, $this->unitCostUnit)->input_value);
+        $this->assertSame('{test_a} * 2', $this->entryFor($period, $b, $this->unitCostUnit)->formula_text);
+        $this->assertSame(40.0, (float) $this->entryFor($period, $b, $this->unitCostUnit)->result_value);
+
+        $globalEntry = UnitCostParameterEntry::query()
+            ->where('period_id', $period->id)
+            ->where('parameter_id', $global->id)
+            ->whereNull('unit_id')
+            ->firstOrFail();
+
+        $this->assertSame(5.0, (float) $globalEntry->input_value);
+    }
+
+    public function test_scoped_user_cannot_access_global_or_unassigned_component(): void
+    {
+        $assigned = $this->makeComponent('ASSIGNED');
+        $other = $this->makeComponent('OTHER');
+        $this->unitCostUnit->unitCostComponents()->attach($assigned->id);
+
+        $period = $this->makePeriod();
+
+        $operator = $this->makeUnitCostUser(
+            ['input_unit_cost'],
+            'operator-scope-component@example.com',
+            $this->unitCostUnit,
+        );
+
+        $this->actingAs($operator)
+            ->get(route('calculations.parameters.edit', [
+                'period' => $period,
+                'component' => 'global',
+                'unit_id' => $this->unitCostUnit->id,
+            ]))
+            ->assertForbidden();
+
+        $this->actingAs($operator)
+            ->get(route('calculations.parameters.edit', [
+                'period' => $period,
+                'component' => $other->id,
+                'unit_id' => $this->unitCostUnit->id,
+            ]))
+            ->assertForbidden();
+    }
+
     public function test_approval_creates_immutable_snapshot(): void
     {
         $component = $this->makeComponent();

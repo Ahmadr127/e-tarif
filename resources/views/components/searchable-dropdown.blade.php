@@ -71,7 +71,7 @@
     @endif
 
     {{-- Hidden input for form submission --}}
-    <input type="hidden" name="{{ $name }}" x-model="selectedValue">
+    <input type="hidden" name="{{ $name }}" x-model="selectedValue" x-ref="hiddenInput" {{ $attributes }}>
 
     {{-- Dropdown trigger --}}
     <button
@@ -235,6 +235,12 @@ function searchableDropdown(config) {
         select(value) {
             this.selectedValue = value;
             this.close();
+
+            // Picu event change native agar handler lama (onchange / addEventListener)
+            // yang menempel pada hidden input tetap berjalan.
+            this.$nextTick(() => {
+                this.$refs.hiddenInput?.dispatchEvent(new Event('change', { bubbles: true }));
+            });
         },
 
         selectFirst() {

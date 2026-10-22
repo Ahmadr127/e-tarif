@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\TarifUnitServicePrefix;
@@ -48,6 +49,14 @@ class TarifUnitServicePrefixTest extends TestCase
             'event' => 'created',
             'subject_type' => TarifUnitServicePrefix::class,
         ]);
+
+        $prefix = TarifUnitServicePrefix::firstOrFail();
+
+        $this->assertSame(1, ActivityLog::query()
+            ->where('event', 'created')
+            ->where('subject_type', TarifUnitServicePrefix::class)
+            ->where('subject_id', $prefix->id)
+            ->count());
     }
 
     public function test_prefix_duplikat_pada_unit_yang_sama_ditolak_validasi(): void

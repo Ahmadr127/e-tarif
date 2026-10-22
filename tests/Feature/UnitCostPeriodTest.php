@@ -63,6 +63,10 @@ class UnitCostPeriodTest extends TestCase
         $period = $this->createPeriod();
         $component = UnitCostComponent::query()->where('code', 'GAJI')->firstOrFail();
 
+        $this->unitCostUnit->unitCostComponents()->attach(
+            UnitCostComponent::query()->where('is_active', true)->pluck('id')
+        );
+
         $this->actingAs($this->unitCostUser)
             ->get(route('calculations.periods.show', ['period' => $period, 'unit_id' => $this->unitCostUnit->id]))
             ->assertOk()
@@ -85,6 +89,30 @@ class UnitCostPeriodTest extends TestCase
             ->assertSee('Input Rumus')
             ->assertSee('Simpan')
             ->assertDontSee('Hitung dan Simpan');
+    }
+
+    public function test_period_show_has_year_selector_with_all_periods(): void
+    {
+        $period = $this->createPeriod();
+
+        UnitCostPeriod::create([
+            'code' => 'UC-2025',
+            'name' => '2025',
+            'period_year' => 2025,
+            'status' => UnitCostPeriod::STATUS_CLOSED,
+            'created_by' => $this->unitCostUser->id,
+        ]);
+
+        $this->actingAs($this->unitCostUser)
+            ->get(route('calculations.periods.show', [
+                'period' => $period,
+                'unit_id' => $this->unitCostUnit->id,
+            ]))
+            ->assertOk()
+            ->assertSee('Tahun')
+            ->assertSee('Pilih Tahun')
+            ->assertSee('2025')
+            ->assertSee('2026');
     }
 
     public function test_period_can_be_activated_and_closed_and_closed_period_is_read_only(): void

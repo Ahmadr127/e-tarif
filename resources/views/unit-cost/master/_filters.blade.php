@@ -9,7 +9,7 @@
         default => 'Cari nama/kode parameter atau ekspresi...',
     };
 
-    $selectClass = 'w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors';
+    $inputClass = 'w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors';
 @endphp
 
 <form method="GET" action="{{ route('calculations.master') }}"
@@ -29,84 +29,101 @@
                        name="search"
                        value="{{ $filters['search'] }}"
                        placeholder="{{ $searchPlaceholder }}"
-                       class="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
+                       class="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary transition-colors">
             </div>
         </div>
 
         @if($section === 'components')
             <div class="lg:w-48">
-                <label for="filter-category" class="block text-xs font-semibold text-gray-600 mb-1">Kategori</label>
-                <select id="filter-category" name="category" class="{{ $selectClass }}">
-                    <option value="">Semua Kategori</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category }}" @selected($filters['category'] === $category)>{{ $category }}</option>
-                    @endforeach
-                </select>
+                <x-searchable-dropdown
+                    label-field="label"
+                    name="category"
+                    label="Kategori"
+                    :options="$categories->map(fn ($category) => (object) ['id' => $category, 'label' => $category])->values()"
+                    :selected="$filters['category'] !== '' ? $filters['category'] : null"
+                    placeholder="Semua Kategori"
+                    empty-option="Semua Kategori"
+                />
             </div>
         @elseif($section === 'parameters')
-            <div class="lg:w-52">
-                <label for="filter-component" class="block text-xs font-semibold text-gray-600 mb-1">Komponen</label>
-                <select id="filter-component" name="component" class="{{ $selectClass }}">
-                    <option value="">Semua Komponen</option>
-                    <option value="global" @selected($filters['component'] === 'global')>Tanpa Komponen (Global)</option>
-                    @foreach($filterComponents as $component)
-                        <option value="{{ $component->id }}" @selected($filters['component'] === (string) $component->id)>
-                            {{ $component->code }} · {{ $component->name }}
-                        </option>
-                    @endforeach
-                </select>
+            <div class="lg:w-56">
+                <x-searchable-dropdown
+                    label-field="label"
+                    name="component"
+                    label="Komponen"
+                    :options="collect([(object) ['id' => 'global', 'label' => 'Tanpa Komponen (Global)']])->concat(
+                        $filterComponents->map(fn ($component) => (object) [
+                            'id' => (string) $component->id,
+                            'label' => $component->code.' · '.$component->name,
+                        ])
+                    )"
+                    :selected="$filters['component'] !== '' ? $filters['component'] : null"
+                    placeholder="Semua Komponen"
+                    empty-option="Semua Komponen"
+                />
             </div>
             <div class="lg:w-40">
-                <label for="filter-scope" class="block text-xs font-semibold text-gray-600 mb-1">Scope</label>
-                <select id="filter-scope" name="scope" class="{{ $selectClass }}">
-                    <option value="">Semua Scope</option>
-                    @foreach($scopeLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($filters['scope'] === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
+                <x-searchable-dropdown
+                    label-field="label"
+                    name="scope"
+                    label="Scope"
+                    :options="collect($scopeLabels)->map(fn ($label, $value) => (object) ['id' => $value, 'label' => $label])->values()"
+                    :selected="$filters['scope'] !== '' ? $filters['scope'] : null"
+                    placeholder="Semua Scope"
+                    empty-option="Semua Scope"
+                />
             </div>
         @else
-            <div class="lg:w-56">
-                <label for="filter-period" class="block text-xs font-semibold text-gray-600 mb-1">Periode</label>
-                <select id="filter-period" name="period" class="{{ $selectClass }}">
-                    <option value="">Semua Periode</option>
-                    @foreach($periodOptions as $period)
-                        <option value="{{ $period->id }}" @selected($filters['period'] === (string) $period->id)>
-                            {{ $period->name }} ({{ $period->period_year }})
-                        </option>
-                    @endforeach
-                </select>
+            <div class="lg:w-60">
+                <x-searchable-dropdown
+                    label-field="label"
+                    name="period"
+                    label="Periode"
+                    :options="$periodOptions->map(fn ($period) => (object) [
+                        'id' => (string) $period->id,
+                        'label' => $period->name.' ('.$period->period_year.')',
+                    ])->values()"
+                    :selected="$filters['period'] !== '' ? $filters['period'] : null"
+                    placeholder="Semua Periode"
+                    empty-option="Semua Periode"
+                />
             </div>
             <div class="lg:w-40">
                 <label for="filter-date-from" class="block text-xs font-semibold text-gray-600 mb-1">Dari Tanggal</label>
                 <input type="date" id="filter-date-from" name="date_from" value="{{ $filters['date_from'] }}"
-                       class="{{ $selectClass }}">
+                       class="{{ $inputClass }}">
             </div>
             <div class="lg:w-40">
                 <label for="filter-date-to" class="block text-xs font-semibold text-gray-600 mb-1">Sampai Tanggal</label>
                 <input type="date" id="filter-date-to" name="date_to" value="{{ $filters['date_to'] }}"
-                       class="{{ $selectClass }}">
+                       class="{{ $inputClass }}">
             </div>
         @endif
 
         @if($section !== 'formula-history')
-            <div class="lg:w-36">
-                <label for="filter-status" class="block text-xs font-semibold text-gray-600 mb-1">Status</label>
-                <select id="filter-status" name="status" class="{{ $selectClass }}">
-                    <option value="">Semua Status</option>
-                    <option value="active" @selected($filters['status'] === 'active')>Aktif</option>
-                    <option value="inactive" @selected($filters['status'] === 'inactive')>Nonaktif</option>
-                </select>
+            <div class="lg:w-40">
+                <x-searchable-dropdown
+                    label-field="label"
+                    name="status"
+                    label="Status"
+                    :options="collect([
+                        (object) ['id' => 'active', 'label' => 'Aktif'],
+                        (object) ['id' => 'inactive', 'label' => 'Nonaktif'],
+                    ])"
+                    :selected="$filters['status'] !== '' ? $filters['status'] : null"
+                    placeholder="Semua Status"
+                    empty-option="Semua Status"
+                />
             </div>
         @endif
 
         <div class="flex items-center gap-2">
             <a href="{{ route('calculations.master', ['section' => $section]) }}"
-               class="inline-flex items-center px-3 py-1.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
+               class="inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors">
                 <i class="bi bi-x-lg mr-1.5 text-xs"></i> Reset
             </a>
             <button type="submit"
-                    class="inline-flex items-center px-3 py-1.5 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
+                    class="inline-flex items-center px-3 py-2 text-sm font-semibold text-white rounded-md bg-sp-primary hover:bg-sp-primary-dark transition-colors">
                 <i class="bi bi-funnel mr-1.5 text-xs"></i> Filter
             </button>
         </div>

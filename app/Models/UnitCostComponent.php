@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class UnitCostComponent extends Model
@@ -28,6 +29,21 @@ class UnitCostComponent extends Model
     public function parameters(): HasMany
     {
         return $this->hasMany(UnitCostParameter::class, 'component_id');
+    }
+
+    /**
+     * Unit organisasi yang memakai komponen ini.
+     *
+     * @return BelongsToMany<OrganizationUnit, $this>
+     */
+    public function units(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            OrganizationUnit::class,
+            'unit_cost_component_unit',
+            'unit_cost_component_id',
+            'organization_unit_id'
+        )->withTimestamps();
     }
 
     /**

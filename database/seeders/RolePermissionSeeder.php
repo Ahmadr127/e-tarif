@@ -38,13 +38,18 @@ class RolePermissionSeeder extends Seeder
             'description' => 'Role untuk pengguna umum'
         ]);
 
-        // Assign permissions to roles
-        $adminRole->permissions()->attach(Permission::all()); // Admin gets all permissions
+        // Assign permissions to roles. Permission `input_unit_cost` khusus
+        // operator unit, jadi tidak diberikan ke admin agar menu "Unit Cost
+        // Saya" tidak tampil ganda di sidebar admin.
+        $adminRole->permissions()->attach(
+            Permission::where('name', '!=', 'input_unit_cost')->get()
+        );
         
         
         $userRole->permissions()->attach(
             Permission::whereIn('name', [
-                'view_dashboard'
+                'view_dashboard',
+                'input_unit_cost',
             ])->get()
         );
     }

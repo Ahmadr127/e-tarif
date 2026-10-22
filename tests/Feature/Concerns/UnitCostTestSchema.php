@@ -56,6 +56,8 @@ trait UnitCostTestSchema
         ]);
 
         $permissions = [
+            'manage_unit_cost',
+            'input_unit_cost',
             'manage_unit_cost_periods',
             'manage_unit_cost_masters',
             'manage_unit_cost_components',
@@ -106,8 +108,11 @@ trait UnitCostTestSchema
     /**
      * @param  array<int, string>  $permissions
      */
-    protected function makeUnitCostUser(array $permissions, string $email = 'unit-cost-limited@example.com'): User
-    {
+    protected function makeUnitCostUser(
+        array $permissions,
+        string $email = 'unit-cost-limited@example.com',
+        ?OrganizationUnit $unit = null,
+    ): User {
         $role = Role::create([
             'name' => 'unit-cost-role-'.str_replace('.', '-', uniqid()),
             'display_name' => 'Unit Cost Limited',
@@ -131,6 +136,7 @@ trait UnitCostTestSchema
             'email' => $email,
             'password' => 'secret',
             'role_id' => $role->id,
+            'organization_unit_id' => $unit?->id,
         ]);
     }
 
@@ -211,6 +217,7 @@ trait UnitCostTestSchema
         Schema::disableForeignKeyConstraints();
 
         foreach ([
+            'unit_cost_component_unit',
             'unit_cost_result_snapshots',
             'unit_cost_parameter_entries',
             'unit_cost_formula_versions',
@@ -232,5 +239,10 @@ trait UnitCostTestSchema
             'migrations/2026_10_21_100002_add_variable_to_unit_cost_parameters.php'
         );
         $variableMigration->up();
+
+        $componentUnitMigration = require database_path(
+            'migrations/2026_10_22_000002_create_unit_cost_component_unit_table.php'
+        );
+        $componentUnitMigration->up();
     }
 }
