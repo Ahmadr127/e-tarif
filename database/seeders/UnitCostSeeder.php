@@ -315,7 +315,12 @@ class UnitCostSeeder extends Seeder
                 'pembebanan_biaya_overhead_lainnya_unit_per_bed',
                 'biaya_makan_per_hari_per_kamar',
             ])
-            ->update(['is_active' => false]);
+            ->update([
+                'is_active' => false,
+                // Parameter lama tetap dinonaktifkan, tetapi scope-nya ikut
+                // diseragamkan agar tidak ada lagi data berscope global.
+                'scope' => UnitCostParameter::SCOPE_UNIT_PERIOD,
+            ]);
 
         UnitCostComponent::query()
             ->whereIn('code', ['SDM', 'ASET', 'OVERHEAD', 'LANGSUNG', 'VOLUME', 'HASIL'])
