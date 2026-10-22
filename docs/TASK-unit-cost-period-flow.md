@@ -29,6 +29,11 @@ hanya untuk tampilan.
    - Setiap parameter memiliki `code` internal dan `variable` global yang unik.
    - Variable global dipakai sebagai referensi `{variable}` pada formula dan
      dapat dipakai lintas komponen.
+   - Master parameter menyimpan **Metode Input Default** dan **Default Value /
+     Rumus Default** (`default_input_type`, `default_value`). Default dipakai
+     saat parameter belum memiliki entry pada periode/unit; entry yang sudah
+     disimpan selalu menang. Untuk parameter derived, seeder mengisi
+     `default_value` dengan rumus acuannya.
    - Komponen yang masih memiliki parameter tidak dapat dihapus; parameter yang
      sudah memiliki entry atau riwayat formula juga tidak dapat dihapus.
 
@@ -55,7 +60,7 @@ Migration: `2026_10_21_100000_create_unit_cost_tables.php`.
 | Tabel | Fungsi |
 | --- | --- |
 | `unit_cost_components` | Master komponen. |
-| `unit_cost_parameters` | Master parameter: `code` internal, `variable` global unik, tipe, satuan, scope, sumber, wajib/opsional. |
+| `unit_cost_parameters` | Master parameter: `code` internal, `variable` global unik, tipe, satuan, scope, sumber, default metode/nilai, wajib/opsional. |
 | `unit_cost_periods` | Periode kalkulasi dengan status `draft`, `active`, `closed`. |
 | `unit_cost_formula_versions` | Riwayat versi ekspresi formula per parameter+periode. |
 | `unit_cost_parameter_entries` | Konfigurasi periode+parameter+unit: metode, nilai, teks formula, versi formula yang dipakai, hasil, status, error. |

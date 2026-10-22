@@ -211,6 +211,7 @@ class UnitCostMasterController extends Controller
                 'component_id' => $request->filled('component_id') ? (int) $request->input('component_id') : null,
                 'value_type' => UnitCostParameter::VALUE_DECIMAL,
                 'scope' => UnitCostParameter::SCOPE_UNIT_PERIOD,
+                'default_input_type' => 'value',
                 'source_type' => UnitCostParameter::SOURCE_MANUAL,
                 'is_required' => true,
                 'is_active' => true,

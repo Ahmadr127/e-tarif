@@ -171,6 +171,39 @@ class UnitCostParameterTest extends TestCase
         $this->assertStringContainsString('belum lengkap', mb_strtolower((string) $entryB->validation_error));
     }
 
+    public function test_default_value_and_formula_are_used_when_entry_is_missing(): void
+    {
+        $component = $this->makeComponent();
+        $a = $this->makeParameter($component, 'default_a', 'Default A', sortOrder: 10);
+        $a->update(['default_input_type' => 'value', 'default_value' => '7']);
+
+        $b = $this->makeParameter($component, 'default_b', 'Default B', sortOrder: 20, sourceType: 'derived');
+        $b->update(['default_input_type' => 'formula', 'default_value' => '{default_a} * 3']);
+
+        $period = $this->makePeriod();
+
+        $evaluation = app(ParameterEvaluationService::class)->evaluate($period, $this->unitCostUnit);
+
+        $this->assertSame(7.0, $evaluation->values['default_a']);
+        $this->assertSame(21.0, $evaluation->values['default_b']);
+        $this->assertSame('default', $evaluation->byCode('default_a')['source']);
+        $this->assertSame('default', $evaluation->byCode('default_b')['source']);
+        $this->assertDatabaseCount('unit_cost_parameter_entries', 0);
+
+        // Nilai tersimpan menimpa default, dan formula default yang
+        // bergantung padanya ikut dievaluasi ulang.
+        $this->save($period, $this->unitCostUnit, $component, [
+            $a->id => ['input_type' => 'value', 'input_value' => 10],
+        ])->assertRedirect();
+
+        $evaluation = app(ParameterEvaluationService::class)->evaluate($period, $this->unitCostUnit);
+
+        $this->assertSame(10.0, $evaluation->values['default_a']);
+        $this->assertSame(30.0, $evaluation->values['default_b']);
+        $this->assertSame('value', $evaluation->byCode('default_a')['source']);
+        $this->assertDatabaseCount('unit_cost_parameter_entries', 1);
+    }
+
     public function test_period_and_unit_entries_are_isolated(): void
     {
         $component = $this->makeComponent();

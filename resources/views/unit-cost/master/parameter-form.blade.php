@@ -145,6 +145,34 @@
                     />
                 </div>
 
+                <div>
+                    <x-searchable-dropdown
+                        label-field="label"
+                        name="default_input_type"
+                        label="Metode Input Default"
+                        :options="collect([
+                            (object) ['id' => 'value', 'label' => 'Input Nilai'],
+                            (object) ['id' => 'formula', 'label' => 'Input Rumus'],
+                        ])->values()"
+                        :selected="old('default_input_type', $parameter->default_input_type ?: 'value')"
+                        placeholder="Input Nilai"
+                    />
+                </div>
+
+                <div class="md:col-span-2">
+                    <label for="default_value" class="block text-sm font-semibold text-sp-navy mb-1">Default Value / Rumus Default</label>
+                    <textarea id="default_value" name="default_value" rows="3" spellcheck="false"
+                              placeholder="Isi angka (mis. 365) atau ekspresi formula (mis. {luas_bangunan_tindakan} / {luas_bangunan_keseluruhan})"
+                              class="w-full text-sm px-3 py-2 border border-gray-300 rounded-md bg-white font-mono leading-5 focus:outline-none focus:ring-2 focus:ring-sp-primary/20 focus:border-sp-primary">{{ old('default_value', $parameter->default_value) }}</textarea>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Dipakai otomatis saat parameter belum memiliki nilai tersimpan pada periode/unit.
+                        Jika metode <span class="font-semibold">Input Rumus</span>, isi dengan ekspresi seperti
+                        <code class="font-mono font-semibold text-sp-navy">{a} / {b}</code>.
+                    </p>
+                    @error('default_input_type')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                    @error('default_value')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                </div>
+
                 <div class="flex items-end gap-6 pb-2">
                     <div>
                         <input type="hidden" name="is_required" value="0">

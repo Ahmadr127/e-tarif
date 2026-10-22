@@ -240,6 +240,11 @@ trait UnitCostTestSchema
         );
         $variableMigration->up();
 
+        $defaultsMigration = require database_path(
+            'migrations/2026_10_22_000004_add_defaults_to_unit_cost_parameters.php'
+        );
+        $defaultsMigration->up();
+
         $componentUnitMigration = require database_path(
             'migrations/2026_10_22_000002_create_unit_cost_component_unit_table.php'
         );

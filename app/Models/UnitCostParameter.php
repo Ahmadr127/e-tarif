@@ -39,6 +39,8 @@ class UnitCostParameter extends Model
         'value_type',
         'unit',
         'scope',
+        'default_input_type',
+        'default_value',
         'source_type',
         'source_name',
         'description',

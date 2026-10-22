@@ -487,12 +487,20 @@ class ParameterEvaluationService
 
         foreach ($parameters as $parameter) {
             $entry = $entries->get($parameter->id);
+            $formulaText = '';
 
-            if ($entry === null || $entry->input_type !== UnitCostParameterEntry::INPUT_FORMULA) {
-                continue;
+            if ($entry !== null) {
+                if ($entry->input_type === UnitCostParameterEntry::INPUT_FORMULA) {
+                    $formulaText = trim((string) $entry->formula_text);
+                }
+            } else {
+                $defaultInputType = (string) ($parameter->default_input_type
+                    ?: ($parameter->isDerived() ? UnitCostParameterEntry::INPUT_FORMULA : UnitCostParameterEntry::INPUT_VALUE));
+
+                if ($defaultInputType === UnitCostParameterEntry::INPUT_FORMULA) {
+                    $formulaText = trim((string) $parameter->default_value);
+                }
             }
-
-            $formulaText = trim((string) $entry->formula_text);
 
             if ($formulaText === '') {
                 continue;
@@ -647,13 +655,30 @@ class ParameterEvaluationService
             $override = $overrides[$parameter->id] ?? $overrides[(string) $parameter->id] ?? null;
             $override = is_array($override) ? $override : null;
 
+            $defaultInputType = (string) ($parameter->default_input_type
+                ?: ($parameter->isDerived() ? UnitCostParameterEntry::INPUT_FORMULA : UnitCostParameterEntry::INPUT_VALUE));
+            $defaultValue = trim((string) $parameter->default_value);
+
             $inputType = (string) ($override['input_type']
                 ?? $entry?->input_type
-                ?? ($parameter->isDerived() ? UnitCostParameterEntry::INPUT_FORMULA : UnitCostParameterEntry::INPUT_VALUE));
+                ?? $defaultInputType);
+
+            // Default hanya berlaku saat belum ada entry/override, sehingga
+            // nilai yang sudah disimpan pengguna tidak tertimpa.
+            $usesDefault = $override === null
+                && $entry === null
+                && $defaultValue !== ''
+                && $inputType === $defaultInputType;
 
             $formulaText = array_key_exists('formula_text', $override ?? [])
                 ? trim((string) $override['formula_text'])
                 : trim((string) $entry?->formula_text);
+
+            if ($usesDefault
+                && $inputType === UnitCostParameterEntry::INPUT_FORMULA
+                && $formulaText === '') {
+                $formulaText = $defaultValue;
+            }
 
             $formulaVersionId = $entry?->formula_version_id;
 
@@ -671,21 +696,20 @@ class ParameterEvaluationService
                     ? $override['input_value']
                     : $entry?->input_value;
 
+                if ($usesDefault && ($raw === null || trim((string) $raw) === '')) {
+                    $raw = $defaultValue;
+                }
+
                 if ($raw !== null && trim((string) $raw) !== '') {
                     try {
                         $inputValue = $this->normalizeValue($parameter, $raw);
-                        $source = 'value';
-                    } catch (FormulaException $exception) {
-                        $valueError = $exception->getMessage();
-                    }
-                } elseif ($entry === null && $parameter->default_value !== null) {
-                    try {
-                        $inputValue = $this->normalizeValue($parameter, $parameter->default_value);
-                        $source = 'default';
+                        $source = $usesDefault ? 'default' : 'value';
                     } catch (FormulaException $exception) {
                         $valueError = $exception->getMessage();
                     }
                 }
+            } elseif ($usesDefault) {
+                $source = 'default';
             }
 
             $contexts[$parameter->formulaKey()] = [
@@ -740,6 +764,18 @@ class ParameterEvaluationService
         $memo = [];
         $visiting = [];
         $affected = $onlyCodes === null ? null : array_fill_keys($onlyCodes, true);
+
+        if ($affected !== null) {
+            // Formula dari default belum punya entry untuk di-hydrate, jadi
+            // selalu dihitung ulang saat evaluasi parsial.
+            foreach ($contexts as $code => $context) {
+                if ($context['entry'] === null
+                    && $context['source'] === 'default'
+                    && $context['input_type'] === UnitCostParameterEntry::INPUT_FORMULA) {
+                    $affected[$code] = true;
+                }
+            }
+        }
 
         if ($affected === null) {
             foreach (array_keys($contexts) as $code) {

@@ -14,12 +14,28 @@ class UpdateUnitCostParameter extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $data = [
             'component_id' => $this->filled('component_id') ? (int) $this->input('component_id') : null,
             'code' => trim((string) $this->input('code')),
             'name' => trim((string) $this->input('name')),
             'unit' => $this->filled('unit') ? trim((string) $this->input('unit')) : null,
-        ]);
+        ];
+
+        // Hanya ubah default bila field memang dikirim, agar update parsial
+        // tidak menghapus default yang sudah tersimpan.
+        if ($this->has('default_value')) {
+            $data['default_value'] = $this->filled('default_value')
+                ? trim((string) $this->input('default_value'))
+                : null;
+        }
+
+        if ($this->has('default_input_type')) {
+            $data['default_input_type'] = $this->filled('default_input_type')
+                ? (string) $this->input('default_input_type')
+                : 'value';
+        }
+
+        $this->merge($data);
     }
 
     /**
@@ -40,6 +56,8 @@ class UpdateUnitCostParameter extends FormRequest
             'value_type' => ['required', 'in:decimal,integer,boolean,string'],
             'unit' => ['nullable', 'string', 'max:50'],
             'scope' => ['required', 'in:global,unit,period,unit_period'],
+            'default_input_type' => ['nullable', 'in:value,formula'],
+            'default_value' => ['nullable', 'string', 'max:2000'],
             'is_required' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
         ];

@@ -51,11 +51,66 @@ class UnitCostMasterTest extends TestCase
             ->assertOk()
             ->assertSee('Kode Parameter')
             ->assertSee('Kode ini juga menjadi variabel global')
+            ->assertSee('Metode Input Default')
+            ->assertSee('Default Value / Rumus Default')
             ->assertDontSee('Variable Global')
             ->assertDontSee('Nama Sumber Data')
             ->assertDontSee('Sumber Data')
             ->assertDontSee('Deskripsi')
             ->assertDontSee('Urutan');
+    }
+
+    public function test_parameter_default_input_method_and_value_are_saved(): void
+    {
+        $component = UnitCostComponent::create([
+            'code' => 'TEST-DEFAULT-COMP',
+            'name' => 'Komponen Default',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->unitCostUser)
+            ->post(route('calculations.master.parameters.store'), [
+                'component_id' => $component->id,
+                'code' => 'test_default_parameter',
+                'name' => 'Parameter Default',
+                'value_type' => 'decimal',
+                'unit' => 'rupiah',
+                'scope' => 'unit_period',
+                'default_input_type' => 'formula',
+                'default_value' => '{test_default_parameter} * 2',
+                'is_required' => 1,
+                'is_active' => 1,
+            ])
+            ->assertRedirect(route('calculations.master', ['section' => 'parameters']));
+
+        $parameter = UnitCostParameter::query()->where('code', 'test_default_parameter')->firstOrFail();
+        $this->assertSame('formula', $parameter->default_input_type);
+        $this->assertSame('{test_default_parameter} * 2', $parameter->default_value);
+
+        $this->actingAs($this->unitCostUser)
+            ->get(route('calculations.master.parameters.edit', $parameter))
+            ->assertOk()
+            ->assertSee('Input Rumus')
+            ->assertSee('{test_default_parameter} * 2', false);
+
+        $this->actingAs($this->unitCostUser)
+            ->put(route('calculations.master.parameters.update', $parameter), [
+                'component_id' => $component->id,
+                'code' => 'test_default_parameter',
+                'name' => 'Parameter Default',
+                'value_type' => 'decimal',
+                'unit' => 'rupiah',
+                'scope' => 'unit_period',
+                'default_input_type' => 'value',
+                'default_value' => '12',
+                'is_required' => 1,
+                'is_active' => 1,
+            ])
+            ->assertRedirect(route('calculations.master', ['section' => 'parameters']));
+
+        $parameter->refresh();
+        $this->assertSame('value', $parameter->default_input_type);
+        $this->assertSame('12', $parameter->default_value);
     }
 
     public function test_component_crud(): void

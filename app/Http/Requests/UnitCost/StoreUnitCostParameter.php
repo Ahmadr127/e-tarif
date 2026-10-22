@@ -19,6 +19,12 @@ class StoreUnitCostParameter extends FormRequest
             'code' => trim((string) $this->input('code')),
             'name' => trim((string) $this->input('name')),
             'unit' => $this->filled('unit') ? trim((string) $this->input('unit')) : null,
+            'default_value' => $this->filled('default_value')
+                ? trim((string) $this->input('default_value'))
+                : null,
+            'default_input_type' => $this->filled('default_input_type')
+                ? (string) $this->input('default_input_type')
+                : 'value',
         ]);
     }
 
@@ -40,6 +46,8 @@ class StoreUnitCostParameter extends FormRequest
             'value_type' => ['required', 'in:decimal,integer,boolean,string'],
             'unit' => ['nullable', 'string', 'max:50'],
             'scope' => ['required', 'in:global,unit,period,unit_period'],
+            'default_input_type' => ['nullable', 'in:value,formula'],
+            'default_value' => ['nullable', 'string', 'max:2000'],
             'is_required' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
         ];
